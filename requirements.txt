@@ -1,0 +1,7 @@
+# Versiones mínimas con ruedas precompiladas para Python 3.13 en Windows (evita MSVC/Rust).
+fastapi>=0.109.0
+sqlmodel>=0.0.14
+uvicorn[standard]>=0.27.0
+psycopg2-binary>=2.9.10
+python-dotenv>=1.0.0
+pydantic[email]>=2.10.0
