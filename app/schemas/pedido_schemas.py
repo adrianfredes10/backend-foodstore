@@ -28,12 +28,17 @@ class DetallePedidoRead(SQLModel):
     subtotal: Decimal
 
 
+class UsuarioSimpleRead(SQLModel):
+    id: int
+    nombre: str
+
+
 class HistorialEstadoRead(SQLModel):
-    estado_anterior: Optional[EstadoPedidoRead]
+    estado_anterior: Optional[EstadoPedidoRead] = None
     estado_nuevo: EstadoPedidoRead
-    usuario_id: Optional[int]
+    usuario: Optional[UsuarioSimpleRead] = None
     fecha: datetime
-    observacion: Optional[str]
+    observacion: Optional[str] = None
 
 
 class PedidoRead(SQLModel):

@@ -31,6 +31,7 @@ FORMAS_DATA = [
     ("EFECTIVO", "Efectivo"),
     ("TARJETA", "Tarjeta debito/credito"),
     ("TRANSFERENCIA", "Transferencia bancaria"),
+    ("MERCADOPAGO", "Mercado Pago"),
 ]
 
 

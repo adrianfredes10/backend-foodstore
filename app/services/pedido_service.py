@@ -16,6 +16,7 @@ from app.schemas.pedido_schemas import (
     ItemPedidoIn,
     PedidoCreate,
     PedidoRead,
+    UsuarioSimpleRead,
 )
 from app.uow import UnitOfWork
 
@@ -94,11 +95,16 @@ class PedidoService:
                 if e:
                     est_ant = _build_estado_read(e)
             e_new = self.uow.pedidos.get_estado_by_id(h.estado_nuevo_id)
+            usr_simple = None
+            if h.usuario_id:
+                u = self.uow.usuarios.get_by_id(h.usuario_id)
+                if u:
+                    usr_simple = UsuarioSimpleRead(id=u.id, nombre=u.nombre)
             hist_rd.append(
                 HistorialEstadoRead(
                     estado_anterior=est_ant,
                     estado_nuevo=_build_estado_read(e_new),
-                    usuario_id=h.usuario_id,
+                    usuario=usr_simple,
                     fecha=h.fecha,
                     observacion=h.observacion,
                 )
@@ -363,11 +369,16 @@ class PedidoService:
                     if e:
                         est_ant = _build_estado_read(e)
                 e_new = uow.pedidos.get_estado_by_id(h.estado_nuevo_id)
+                usr_simple = None
+                if h.usuario_id:
+                    u = uow.usuarios.get_by_id(h.usuario_id)
+                    if u:
+                        usr_simple = UsuarioSimpleRead(id=u.id, nombre=u.nombre)
                 hist_rd.append(
                     HistorialEstadoRead(
                         estado_anterior=est_ant,
                         estado_nuevo=_build_estado_read(e_new),
-                        usuario_id=h.usuario_id,
+                        usuario=usr_simple,
                         fecha=h.fecha,
                         observacion=h.observacion,
                     )
