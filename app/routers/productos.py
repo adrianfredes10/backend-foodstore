@@ -1,61 +1,98 @@
-from typing import Annotated, Optional, List
-from fastapi import APIRouter, Query, Path, Depends, status
-from app.uow import UnitOfWork, get_uow
+from typing import Annotated, Optional
+
+from fastapi import APIRouter, Depends, Path, Query, status
+
+from app.constants.codigos import RolCodigo
+from app.deps.auth_deps import require_roles
+from app.models.seguridad import Usuario
+from app.schemas.common import PaginatedResponse
+from app.schemas.producto import (
+    ProductoCreate,
+    ProductoDisponibilidadBody,
+    ProductoRead,
+    ProductoStockBody,
+    ProductoUpdate,
+)
 from app.services.producto_service import ProductoService
-from app.schemas.producto import ProductoCreate, ProductoRead, ProductoUpdate
+from app.uow import UnitOfWork, get_uow
 
-router = APIRouter(prefix="/api/productos", tags=["productos"])
+router = APIRouter(tags=["productos"])
 
 
-@router.get("", response_model=List[ProductoRead])
+@router.get("", response_model=PaginatedResponse)
 def get_productos(
-    skip: Annotated[int, Query(ge=0)] = 0,
-    limit: Annotated[int, Query(ge=1, le=100)] = 100,
+    page: Annotated[int, Query(ge=1)] = 1,
+    size: Annotated[int, Query(ge=1, le=100)] = 20,
     categoria_id: Annotated[Optional[int], Query(gt=0)] = None,
-    uow: UnitOfWork = Depends(get_uow)
+    disponible: Annotated[Optional[bool], Query()] = None,
+    q: Annotated[Optional[str], Query(max_length=200)] = None,
+    uow: UnitOfWork = Depends(get_uow),
 ):
-    """Lista todos los productos con sus relaciones"""
-    service = ProductoService(uow)
-    return service.get_all(skip, limit, categoria_id)
+    return ProductoService(uow).get_all(
+        page=page,
+        size=size,
+        categoria_id=categoria_id,
+        disponible=disponible,
+        q=q,
+    )
 
 
 @router.get("/{id}", response_model=ProductoRead)
 def get_producto(
     id: Annotated[int, Path(gt=0)],
-    uow: UnitOfWork = Depends(get_uow)
+    uow: UnitOfWork = Depends(get_uow),
 ):
-    """Obtiene un producto por ID con todas sus relaciones"""
-    service = ProductoService(uow)
-    return service.get_by_id(id)
+    return ProductoService(uow).get_by_id(id)
 
 
 @router.post("", response_model=ProductoRead, status_code=status.HTTP_201_CREATED)
 def create_producto(
     producto_data: ProductoCreate,
-    uow: UnitOfWork = Depends(get_uow)
+    *,
+    uow: UnitOfWork = Depends(get_uow),
+    _admin: Annotated[Usuario, Depends(require_roles(RolCodigo.ADMIN))],
 ):
-    """Crea un nuevo producto con sus categorías e ingredientes"""
-    service = ProductoService(uow)
-    return service.create(producto_data)
+    return ProductoService(uow).create(producto_data)
 
 
 @router.put("/{id}", response_model=ProductoRead)
 def update_producto(
     id: Annotated[int, Path(gt=0)],
     producto_data: ProductoUpdate,
-    uow: UnitOfWork = Depends(get_uow)
+    *,
+    uow: UnitOfWork = Depends(get_uow),
+    _admin: Annotated[Usuario, Depends(require_roles(RolCodigo.ADMIN))],
 ):
-    """Actualiza un producto existente"""
-    service = ProductoService(uow)
-    return service.update(id, producto_data)
+    return ProductoService(uow).update(id, producto_data)
 
 
 @router.delete("/{id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_producto(
     id: Annotated[int, Path(gt=0)],
-    uow: UnitOfWork = Depends(get_uow)
+    *,
+    uow: UnitOfWork = Depends(get_uow),
+    _admin: Annotated[Usuario, Depends(require_roles(RolCodigo.ADMIN))],
 ):
-    """Elimina un producto"""
-    service = ProductoService(uow)
-    service.delete(id)
-    return None
+    ProductoService(uow).delete(id)
+
+
+@router.patch("/{id}/stock", response_model=ProductoRead)
+def patch_stock(
+    id: Annotated[int, Path(gt=0)],
+    body: ProductoStockBody,
+    *,
+    uow: UnitOfWork = Depends(get_uow),
+    _user: Annotated[Usuario, Depends(require_roles(RolCodigo.ADMIN, RolCodigo.STOCK))],
+):
+    return ProductoService(uow).set_stock_cantidad(id, body.stock_cantidad)
+
+
+@router.patch("/{id}/disponibilidad", response_model=ProductoRead)
+def patch_disponibilidad(
+    id: Annotated[int, Path(gt=0)],
+    body: ProductoDisponibilidadBody,
+    *,
+    uow: UnitOfWork = Depends(get_uow),
+    _user: Annotated[Usuario, Depends(require_roles(RolCodigo.ADMIN, RolCodigo.STOCK))],
+):
+    return ProductoService(uow).set_disponibilidad(id, body.disponible)

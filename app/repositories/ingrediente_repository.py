@@ -1,16 +1,18 @@
 from datetime import datetime, timezone
 from typing import List, Optional
+
+from sqlalchemy.orm import selectinload
 from sqlmodel import Session, select
+
 from app.models.ingrediente import Ingrediente, ProductoIngrediente
 from app.models.producto import Producto
+from app.repositories.base_repository import BaseRepository
 from app.schemas.ingrediente import IngredienteCreate, IngredienteUpdate
 
 
-class IngredienteRepository:
-    """Encapsula el acceso a datos de ingredientes. No hace commit."""
-
+class IngredienteRepository(BaseRepository[Ingrediente]):
     def __init__(self, session: Session):
-        self.session = session
+        super().__init__(session, Ingrediente)
 
     def get_all(self, skip: int = 0, limit: int = 100) -> List[Ingrediente]:
         statement = (
@@ -29,25 +31,27 @@ class IngredienteRepository:
         )
 
     def get_by_id(self, ingrediente_id: int) -> Optional[Ingrediente]:
-        ingrediente = self.session.get(Ingrediente, ingrediente_id)
-        if ingrediente and ingrediente.deleted_at is not None:
+        ing = super().get_by_id(ingrediente_id)
+        if ing is None or ing.deleted_at is not None:
             return None
-        return ingrediente
+        return ing
 
     def get_by_nombre(self, nombre: str) -> Optional[Ingrediente]:
         return self.session.exec(
             select(Ingrediente).where(
                 Ingrediente.nombre == nombre,
-                Ingrediente.deleted_at.is_(None)
+                Ingrediente.deleted_at.is_(None),
             )
         ).first()
 
-    def get_by_nombre_excluding(self, nombre: str, exclude_id: int) -> Optional[Ingrediente]:
+    def get_by_nombre_excluding(
+        self, nombre: str, exclude_id: int
+    ) -> Optional[Ingrediente]:
         return self.session.exec(
             select(Ingrediente).where(
                 Ingrediente.nombre == nombre,
                 Ingrediente.id != exclude_id,
-                Ingrediente.deleted_at.is_(None)
+                Ingrediente.deleted_at.is_(None),
             )
         ).first()
 
@@ -56,7 +60,9 @@ class IngredienteRepository:
         self.session.add(ingrediente)
         return ingrediente
 
-    def update(self, ingrediente: Ingrediente, ingrediente_data: IngredienteUpdate) -> Ingrediente:
+    def update(
+        self, ingrediente: Ingrediente, ingrediente_data: IngredienteUpdate
+    ) -> Ingrediente:
         ingrediente.nombre = ingrediente_data.nombre
         ingrediente.unidad_medida = ingrediente_data.unidad_medida
         ingrediente.stock_actual = ingrediente_data.stock_actual
