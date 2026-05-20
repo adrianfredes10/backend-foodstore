@@ -26,6 +26,16 @@ class DireccionService:
             created_at=d.created_at,
         )
 
+    def obtener(self, usuario_id: int, direccion_id: int) -> DireccionRead:
+        with self.uow as uow:
+            d = uow.direcciones.get_owned(direccion_id, usuario_id)
+            if not d:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Dirección no encontrada",
+                )
+            return self._read(d)
+
     def listar(self, usuario_id: int) -> List[DireccionRead]:
         with self.uow as uow:
             rows = uow.direcciones.list_by_usuario(usuario_id)

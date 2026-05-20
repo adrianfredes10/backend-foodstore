@@ -28,6 +28,15 @@ def crear(
     return DireccionService(uow).crear(user.id, body)
 
 
+@router.get("/{direccion_id}", response_model=DireccionRead)
+def obtener(
+    direccion_id: Annotated[int, Path(gt=0)],
+    user: Annotated[Usuario, Depends(get_current_user)],
+    uow: UnitOfWork = Depends(get_uow),
+):
+    return DireccionService(uow).obtener(user.id, direccion_id)
+
+
 @router.patch("/{direccion_id}", response_model=DireccionRead)
 def actualizar(
     direccion_id: Annotated[int, Path(gt=0)],
