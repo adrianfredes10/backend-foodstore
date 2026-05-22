@@ -9,6 +9,7 @@ Documentación interactiva: **`GET /docs`** (Swagger) y **`GET /redoc`**.
 ## Autenticación (JWT)
 
 - **Login** (`POST /api/v1/auth/login`) recibe JSON `{"email": "...", "password": "..."}`, devuelve `UsuarioPublic` y setea una **cookie HttpOnly** llamada `access_token` con el JWT.
+- **JWT:** firmado con **python-jose** (HS256).
 - **Vencimiento:** `ACCESS_TOKEN_EXPIRE_MINUTES` (por defecto 30 min en `app/core/config.py`).
 - **Clave secreta:** variable de entorno `SECRET_KEY`.
 - Las rutas protegidas leen el JWT desde la **cookie** (`COOKIE_NAME = "access_token"` en `app/deps/auth_deps.py`).

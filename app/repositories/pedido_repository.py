@@ -1,7 +1,6 @@
 from datetime import datetime, timezone
 from typing import List, Optional
 
-from sqlalchemy.orm import selectinload
 from sqlmodel import Session, select
 
 from app.models.pedido import (
@@ -55,14 +54,13 @@ class PedidoRepository(BaseRepository[Pedido]):
         return row
 
     def get_pedido(self, pedido_id: int) -> Optional[Pedido]:
-        return self.session.exec(
-            select(Pedido)
-            .where(Pedido.id == pedido_id)
-            .options(
-                selectinload(Pedido.detalles),
-                selectinload(Pedido.historial),
-            )
+        pedido = self.session.exec(
+            select(Pedido).where(Pedido.id == pedido_id)
         ).first()
+        if pedido:
+            _ = [d.producto_nombre for d in pedido.detalles]
+            _ = [h.fecha for h in pedido.historial]
+        return pedido
 
     def list_for_usuario(
         self,

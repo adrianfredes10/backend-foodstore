@@ -2,7 +2,7 @@
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
-import jwt
+from jose import JWTError, jwt
 from passlib.context import CryptContext
 
 from app.core.config import get_settings
@@ -35,4 +35,7 @@ def create_access_token(*, subject_email: str, user_id: int, roles: list[str]) -
 
 def decode_access_token(token: str) -> dict[str, Any]:
     s = get_settings()
-    return jwt.decode(token, s.SECRET_KEY, algorithms=[s.JWT_ALGORITHM])
+    try:
+        return jwt.decode(token, s.SECRET_KEY, algorithms=[s.JWT_ALGORITHM])
+    except JWTError:
+        raise

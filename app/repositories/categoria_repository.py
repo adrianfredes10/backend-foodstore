@@ -2,7 +2,6 @@ from datetime import datetime, timezone
 from typing import List, Optional
 
 from sqlalchemy import text
-from sqlalchemy.orm import selectinload
 from sqlmodel import Session, select
 
 from app.models.categoria import Categoria
@@ -22,17 +21,16 @@ class CategoriaRepository(BaseRepository[Categoria]):
         parent_id: Optional[int] = None,
         activa: Optional[bool] = None,
     ) -> List[Categoria]:
-        statement = (
-            select(Categoria)
-            .where(Categoria.deleted_at.is_(None))
-            .options(selectinload(Categoria.subcategorias))
-        )
+        statement = select(Categoria).where(Categoria.deleted_at.is_(None))
         if parent_id is not None:
             statement = statement.where(Categoria.parent_id == parent_id)
         if activa is not None:
             statement = statement.where(Categoria.activa == activa)
         statement = statement.offset(skip).limit(limit)
-        return self.session.exec(statement).all()
+        cats = self.session.exec(statement).all()
+        for c in cats:
+            _ = [s.id for s in c.subcategorias]
+        return cats
 
     def count(self, activa: Optional[bool] = None) -> int:
         q = select(Categoria).where(Categoria.deleted_at.is_(None))
@@ -68,9 +66,10 @@ class CategoriaRepository(BaseRepository[Categoria]):
             select(Categoria)
             .where(Categoria.id.in_(sliced))
             .where(Categoria.deleted_at.is_(None))
-            .options(selectinload(Categoria.subcategorias))
         )
         out = list(self.session.exec(stmt).all())
+        for c in out:
+            _ = [s.id for s in c.subcategorias]
         order = {cid: n for n, cid in enumerate(sliced)}
         out.sort(key=lambda c: order.get(c.id, 9999))
         return out
@@ -82,13 +81,10 @@ class CategoriaRepository(BaseRepository[Categoria]):
         return categoria
 
     def get_by_id_con_subcategorias(self, categoria_id: int) -> Optional[Categoria]:
-        categoria = self.session.get(
-            Categoria,
-            categoria_id,
-            options=(selectinload(Categoria.subcategorias),),
-        )
+        categoria = self.session.get(Categoria, categoria_id)
         if categoria is None or categoria.deleted_at is not None:
             return None
+        _ = [s.id for s in categoria.subcategorias]
         return categoria
 
     def get_by_nombre(self, nombre: str) -> Optional[Categoria]:

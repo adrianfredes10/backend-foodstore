@@ -28,21 +28,13 @@ class ProductoRepository(BaseRepository[Producto]):
         disponible: Optional[bool] = None,
         q: Optional[str] = None,
     ) -> List[Producto]:
-        from sqlalchemy import or_
-
         query = select(Producto).where(Producto.deleted_at.is_(None))
         if categoria_id:
             query = query.where(Producto.categoria_id == categoria_id)
         if disponible is not None:
             query = query.where(Producto.disponible == disponible)
         if q:
-            like = f"%{q.strip()}%"
-            query = query.where(
-                or_(
-                    Producto.nombre.ilike(like),
-                    Producto.descripcion.ilike(like),
-                )
-            )
+            query = query.where(Producto.nombre.ilike(f"%{q.strip()}%"))
         return self.session.exec(query.offset(skip).limit(limit)).all()
 
     def count(
@@ -51,21 +43,13 @@ class ProductoRepository(BaseRepository[Producto]):
         disponible: Optional[bool] = None,
         q: Optional[str] = None,
     ) -> int:
-        from sqlalchemy import or_
-
         query = select(Producto).where(Producto.deleted_at.is_(None))
         if categoria_id:
             query = query.where(Producto.categoria_id == categoria_id)
         if disponible is not None:
             query = query.where(Producto.disponible == disponible)
         if q:
-            like = f"%{q.strip()}%"
-            query = query.where(
-                or_(
-                    Producto.nombre.ilike(like),
-                    Producto.descripcion.ilike(like),
-                )
-            )
+            query = query.where(Producto.nombre.ilike(f"%{q.strip()}%"))
         return len(self.session.exec(query).all())
 
     def get_by_id(self, producto_id: int) -> Optional[Producto]:
@@ -210,7 +194,7 @@ class ProductoRepository(BaseRepository[Producto]):
             id=producto.id,
             nombre=producto.nombre,
             descripcion=producto.descripcion,
-            precio=producto.precio,
+            precio=str(producto.precio),
             disponible=producto.disponible,
             stock_cantidad=producto.stock_cantidad,
             imagen_url=producto.imagen_url,

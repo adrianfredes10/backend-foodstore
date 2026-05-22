@@ -56,6 +56,6 @@ def logout(response: Response):
 
 @router.get("/me", response_model=UsuarioPublic)
 def obtener_perfil_actual(user: Annotated[Usuario, Depends(get_current_user)]):
-    # user viene de get_current_user con roles cargados via selectinload
+    # user viene de get_current_user con roles cargados en la sesión activa
     # la sesión de auth_deps se cierra sin commit, así que los atributos no expiran
     return _to_public(user)

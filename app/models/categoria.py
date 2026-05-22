@@ -20,10 +20,7 @@ class Categoria(SQLModel, table=True):
 
     subcategorias: List["Categoria"] = Relationship(
         back_populates="parent",
-        sa_relationship_kwargs={
-            "foreign_keys": "[Categoria.parent_id]",
-            "lazy": "selectin",
-        },
+        sa_relationship_kwargs={"foreign_keys": "[Categoria.parent_id]"},
     )
     parent: Optional["Categoria"] = Relationship(
         back_populates="subcategorias",

@@ -1,7 +1,6 @@
 from datetime import datetime, timezone
 from typing import List, Optional
 
-from sqlalchemy.orm import selectinload
 from sqlmodel import Session, select
 
 from app.models.seguridad import Rol, Usuario, UsuarioRol
@@ -13,21 +12,28 @@ class UsuarioRepository(BaseRepository[Usuario]):
         super().__init__(session, Usuario)
 
     def get_by_email(self, email: str) -> Optional[Usuario]:
-        return self.session.exec(
-            select(Usuario)
-            .where(Usuario.email == email, Usuario.deleted_at.is_(None))
-            .options(selectinload(Usuario.roles))
+        user = self.session.exec(
+            select(Usuario).where(
+                Usuario.email == email,
+                Usuario.deleted_at.is_(None),
+            )
         ).first()
+        if user:
+            _ = [r.codigo for r in user.roles]
+        return user
 
     def get_by_id(
         self, usuario_id: int, *, with_roles: bool = True
     ) -> Optional[Usuario]:
-        q = select(Usuario).where(
-            Usuario.id == usuario_id, Usuario.deleted_at.is_(None)
-        )
-        if with_roles:
-            q = q.options(selectinload(Usuario.roles))
-        return self.session.exec(q).first()
+        user = self.session.exec(
+            select(Usuario).where(
+                Usuario.id == usuario_id,
+                Usuario.deleted_at.is_(None),
+            )
+        ).first()
+        if user and with_roles:
+            _ = [r.codigo for r in user.roles]
+        return user
 
     def create(self, usuario: Usuario) -> Usuario:
         self.session.add(usuario)
@@ -79,8 +85,11 @@ class UsuarioRepository(BaseRepository[Usuario]):
                 .where(Rol.codigo == rol_codigo)
                 .distinct()
             )
-        q = q.options(selectinload(Usuario.roles)).offset(skip).limit(limit)
-        return self.session.exec(q).all()
+        q = q.offset(skip).limit(limit)
+        usuarios = self.session.exec(q).all()
+        for u in usuarios:
+            _ = [r.codigo for r in u.roles]
+        return usuarios
 
     def count_filtrado(self, rol_codigo: Optional[str] = None) -> int:
         if rol_codigo:
