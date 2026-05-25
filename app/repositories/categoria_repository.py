@@ -1,65 +1,108 @@
 from datetime import datetime, timezone
 from typing import List, Optional
-from sqlalchemy.orm import selectinload
+
+from sqlalchemy import text
 from sqlmodel import Session, select
-from app.models.categoria import Categoria, ProductoCategoria
+
+from app.models.categoria import Categoria
 from app.models.producto import Producto
+from app.repositories.base_repository import BaseRepository
 from app.schemas.categoria import CategoriaCreate, CategoriaUpdate
 
 
-class CategoriaRepository:
-    """Encapsula el acceso a datos de categorías. No hace commit."""
-
+class CategoriaRepository(BaseRepository[Categoria]):
     def __init__(self, session: Session):
-        self.session = session
+        super().__init__(session, Categoria)
 
-    def get_all(self, skip: int = 0, limit: int = 100) -> List[Categoria]:
-        statement = (
+    def get_all(
+        self,
+        skip: int = 0,
+        limit: int = 100,
+        parent_id: Optional[int] = None,
+        activa: Optional[bool] = None,
+    ) -> List[Categoria]:
+        statement = select(Categoria).where(Categoria.deleted_at.is_(None))
+        if parent_id is not None:
+            statement = statement.where(Categoria.parent_id == parent_id)
+        if activa is not None:
+            statement = statement.where(Categoria.activa == activa)
+        statement = statement.offset(skip).limit(limit)
+        cats = self.session.exec(statement).all()
+        for c in cats:
+            _ = [s.id for s in c.subcategorias]
+        return cats
+
+    def count(self, activa: Optional[bool] = None) -> int:
+        q = select(Categoria).where(Categoria.deleted_at.is_(None))
+        if activa is not None:
+            q = q.where(Categoria.activa == activa)
+        return len(self.session.exec(q).all())
+
+    # ids bajo root_id (incluye root) con cte recursivo en postgres
+    def list_subarbol_recursivo(
+        self, root_id: int, skip: int, limit: int
+    ) -> List[Categoria]:
+        sql = text(
+            """
+            WITH RECURSIVE arbol AS (
+                SELECT id FROM categoria
+                WHERE id = :root_id AND deleted_at IS NULL
+                UNION ALL
+                SELECT c.id FROM categoria c
+                INNER JOIN arbol a ON c.parent_id = a.id
+                WHERE c.deleted_at IS NULL
+            )
+            SELECT id FROM arbol ORDER BY id
+            """
+        )
+        rows = self.session.connection().execute(sql, {"root_id": root_id})
+        all_ids = [r[0] for r in rows.fetchall()]
+        if not all_ids:
+            return []
+        sliced = all_ids[skip : skip + limit]
+        if not sliced:
+            return []
+        stmt = (
             select(Categoria)
+            .where(Categoria.id.in_(sliced))
             .where(Categoria.deleted_at.is_(None))
-            .options(selectinload(Categoria.subcategorias))
-            .offset(skip)
-            .limit(limit)
         )
-        return self.session.exec(statement).all()
-
-    def count(self) -> int:
-        return len(
-            self.session.exec(
-                select(Categoria).where(Categoria.deleted_at.is_(None))
-            ).all()
-        )
+        out = list(self.session.exec(stmt).all())
+        for c in out:
+            _ = [s.id for s in c.subcategorias]
+        order = {cid: n for n, cid in enumerate(sliced)}
+        out.sort(key=lambda c: order.get(c.id, 9999))
+        return out
 
     def get_by_id(self, categoria_id: int) -> Optional[Categoria]:
-        categoria = self.session.get(Categoria, categoria_id)
-        if categoria and categoria.deleted_at is not None:
+        categoria = super().get_by_id(categoria_id)
+        if categoria is None or categoria.deleted_at is not None:
             return None
         return categoria
 
     def get_by_id_con_subcategorias(self, categoria_id: int) -> Optional[Categoria]:
-        categoria = self.session.get(
-            Categoria,
-            categoria_id,
-            options=(selectinload(Categoria.subcategorias),),
-        )
-        if categoria and categoria.deleted_at is not None:
+        categoria = self.session.get(Categoria, categoria_id)
+        if categoria is None or categoria.deleted_at is not None:
             return None
+        _ = [s.id for s in categoria.subcategorias]
         return categoria
 
     def get_by_nombre(self, nombre: str) -> Optional[Categoria]:
         return self.session.exec(
             select(Categoria).where(
                 Categoria.nombre == nombre,
-                Categoria.deleted_at.is_(None)
+                Categoria.deleted_at.is_(None),
             )
         ).first()
 
-    def get_by_nombre_excluding(self, nombre: str, exclude_id: int) -> Optional[Categoria]:
+    def get_by_nombre_excluding(
+        self, nombre: str, exclude_id: int
+    ) -> Optional[Categoria]:
         return self.session.exec(
             select(Categoria).where(
                 Categoria.nombre == nombre,
                 Categoria.id != exclude_id,
-                Categoria.deleted_at.is_(None)
+                Categoria.deleted_at.is_(None),
             )
         ).first()
 
@@ -81,15 +124,11 @@ class CategoriaRepository:
         categoria.deleted_at = datetime.now(timezone.utc)
         self.session.add(categoria)
 
-    def delete(self, categoria: Categoria) -> None:
-        self.session.delete(categoria)
-
     def has_productos(self, categoria_id: int) -> bool:
+        # 1:N: basta con buscar un producto activo con esa categoria_id
         result = self.session.exec(
-            select(ProductoCategoria)
-            .join(Producto, ProductoCategoria.producto_id == Producto.id)
-            .where(
-                ProductoCategoria.categoria_id == categoria_id,
+            select(Producto).where(
+                Producto.categoria_id == categoria_id,
                 Producto.deleted_at.is_(None),
             )
         ).first()

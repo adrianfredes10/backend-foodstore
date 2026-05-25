@@ -1,53 +1,58 @@
 from datetime import datetime
 from typing import Optional, List
 from decimal import Decimal
-from pydantic import field_validator, field_serializer
 from sqlmodel import SQLModel, Field
 from app.schemas.categoria import CategoriaRead
 
 
 class ProductoIngredienteInput(SQLModel):
-    """Schema para asignar ingredientes a un producto"""
     ingrediente_id: int
     cantidad: float = Field(gt=0)
+    es_alergeno: bool = False
 
 
 class ProductoIngredienteRead(SQLModel):
-    """Schema para leer ingredientes de un producto"""
     ingrediente_id: int
     nombre: str
     cantidad: float
     unidad_medida: str
+    es_alergeno: bool = False
 
 
 class ProductoBase(SQLModel):
-    """Base schema para Producto"""
     nombre: str = Field(min_length=3, max_length=150)
     descripcion: Optional[str] = Field(default=None, max_length=1000)
-    precio: Decimal = Field(gt=0, max_digits=10, decimal_places=2)
     disponible: bool = Field(default=True)
+    stock_cantidad: float = Field(ge=0, default=0)
+    imagen_url: Optional[str] = Field(default=None, max_length=500)
 
 
 class ProductoCreate(ProductoBase):
-    """Schema para crear un producto"""
-    categoria_ids: List[int] = Field(min_length=1)
+    # 1:N — un solo id de categoría
+    precio: Decimal = Field(gt=0, max_digits=10, decimal_places=2)
+    categoria_id: int
     ingredientes: List[ProductoIngredienteInput] = Field(min_length=1)
 
 
 class ProductoUpdate(ProductoBase):
-    """Schema para actualizar un producto"""
-    categoria_ids: List[int] = Field(min_length=1)
+    precio: Decimal = Field(gt=0, max_digits=10, decimal_places=2)
+    categoria_id: int
     ingredientes: List[ProductoIngredienteInput] = Field(min_length=1)
 
 
-class ProductoRead(ProductoBase):
-    """Schema para leer un producto con todas sus relaciones"""
-    id: int
-    created_at: datetime
-    categorias: List[CategoriaRead]
-    ingredientes: List[ProductoIngredienteRead]
+class ProductoDisponibilidadBody(SQLModel):
+    disponible: bool
 
-    @field_serializer('precio')
-    def serialize_precio(self, v: Decimal) -> float:
-        """Serializa Decimal a float para JSON"""
-        return float(v)
+
+class ProductoStockBody(SQLModel):
+    stock_cantidad: float = Field(ge=0)
+
+
+class ProductoRead(ProductoBase):
+    id: int
+    # precio serializado como string para evitar problemas de precisión en js
+    precio: str
+    created_at: datetime
+    # objeto único, no lista
+    categoria: Optional[CategoriaRead]
+    ingredientes: List[ProductoIngredienteRead]

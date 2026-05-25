@@ -3,14 +3,14 @@ from app.database import engine
 from app.repositories.categoria_repository import CategoriaRepository
 from app.repositories.ingrediente_repository import IngredienteRepository
 from app.repositories.producto_repository import ProductoRepository
+from app.repositories.rol_repository import RolRepository
+from app.repositories.direccion_repository import DireccionRepository
+from app.repositories.pedido_repository import PedidoRepository
+from app.repositories.usuario_repository import UsuarioRepository
 
 
 class UnitOfWork:
-    """
-    Controla la transacción de base de datos.
-    Hace commit al salir sin errores, rollback ante cualquier excepción.
-    Expone los repositories como atributos.
-    """
+    # commit ok rollback si falla repos con el mismo session
 
     def __init__(self):
         self.session: Session = None
@@ -20,6 +20,10 @@ class UnitOfWork:
         self.categorias = CategoriaRepository(self.session)
         self.ingredientes = IngredienteRepository(self.session)
         self.productos = ProductoRepository(self.session)
+        self.roles = RolRepository(self.session)
+        self.usuarios = UsuarioRepository(self.session)
+        self.pedidos = PedidoRepository(self.session)
+        self.direcciones = DireccionRepository(self.session)
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -30,14 +34,14 @@ class UnitOfWork:
         self.session.close()
 
     def flush(self):
-        """Envía los cambios pendientes a la BD sin hacer commit."""
+        # flush sin commit (ver __exit__)
         self.session.flush()
 
     def refresh(self, instance):
-        """Recarga el objeto desde la BD para leer relaciones actualizadas."""
+        # relee el objeto por si cambio en bd
         self.session.refresh(instance)
 
 
 def get_uow() -> UnitOfWork:
-    """Dependency para obtener un UnitOfWork. Para usar con Depends()."""
+    # factory para Depends(get_uow)
     return UnitOfWork()

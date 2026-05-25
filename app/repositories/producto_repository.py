@@ -1,56 +1,68 @@
 from datetime import datetime, timezone
 from typing import List, Optional
+
 from sqlmodel import Session, select
-from app.models.producto import Producto
-from app.models.categoria import Categoria, ProductoCategoria
+
+from app.models.categoria import Categoria
 from app.models.ingrediente import Ingrediente, ProductoIngrediente
-from app.schemas.producto import ProductoUpdate, ProductoRead, ProductoIngredienteRead, ProductoIngredienteInput
+from app.models.producto import Producto
+from app.repositories.base_repository import BaseRepository
 from app.schemas.categoria import CategoriaRead
+from app.schemas.producto import (
+    ProductoIngredienteInput,
+    ProductoIngredienteRead,
+    ProductoRead,
+    ProductoUpdate,
+)
 
 
-class ProductoRepository:
-    """Encapsula el acceso a datos de productos. No hace commit."""
-
+class ProductoRepository(BaseRepository[Producto]):
     def __init__(self, session: Session):
-        self.session = session
+        super().__init__(session, Producto)
 
-    def get_all(self, skip: int = 0, limit: int = 100, categoria_id: Optional[int] = None) -> List[Producto]:
+    def get_all(
+        self,
+        skip: int = 0,
+        limit: int = 100,
+        categoria_id: Optional[int] = None,
+        disponible: Optional[bool] = None,
+        q: Optional[str] = None,
+    ) -> List[Producto]:
         query = select(Producto).where(Producto.deleted_at.is_(None))
         if categoria_id:
-            query = (
-                query.join(ProductoCategoria)
-                .join(Categoria, ProductoCategoria.categoria_id == Categoria.id)
-                .where(
-                    ProductoCategoria.categoria_id == categoria_id,
-                    Categoria.deleted_at.is_(None),
-                )
-            )
+            query = query.where(Producto.categoria_id == categoria_id)
+        if disponible is not None:
+            query = query.where(Producto.disponible == disponible)
+        if q:
+            query = query.where(Producto.nombre.ilike(f"%{q.strip()}%"))
         return self.session.exec(query.offset(skip).limit(limit)).all()
 
-    def count(self, categoria_id: Optional[int] = None) -> int:
+    def count(
+        self,
+        categoria_id: Optional[int] = None,
+        disponible: Optional[bool] = None,
+        q: Optional[str] = None,
+    ) -> int:
         query = select(Producto).where(Producto.deleted_at.is_(None))
         if categoria_id:
-            query = (
-                query.join(ProductoCategoria)
-                .join(Categoria, ProductoCategoria.categoria_id == Categoria.id)
-                .where(
-                    ProductoCategoria.categoria_id == categoria_id,
-                    Categoria.deleted_at.is_(None),
-                )
-            )
+            query = query.where(Producto.categoria_id == categoria_id)
+        if disponible is not None:
+            query = query.where(Producto.disponible == disponible)
+        if q:
+            query = query.where(Producto.nombre.ilike(f"%{q.strip()}%"))
         return len(self.session.exec(query).all())
 
     def get_by_id(self, producto_id: int) -> Optional[Producto]:
-        producto = self.session.get(Producto, producto_id)
-        if producto and producto.deleted_at is not None:
+        p = super().get_by_id(producto_id)
+        if p is None or p.deleted_at is not None:
             return None
-        return producto
+        return p
 
     def get_by_nombre(self, nombre: str) -> Optional[Producto]:
         return self.session.exec(
             select(Producto).where(
                 Producto.nombre == nombre,
-                Producto.deleted_at.is_(None)
+                Producto.deleted_at.is_(None),
             )
         ).first()
 
@@ -59,7 +71,7 @@ class ProductoRepository:
             select(Producto).where(
                 Producto.nombre == nombre,
                 Producto.id != exclude_id,
-                Producto.deleted_at.is_(None)
+                Producto.deleted_at.is_(None),
             )
         ).first()
 
@@ -72,6 +84,19 @@ class ProductoRepository:
         producto.descripcion = producto_data.descripcion
         producto.precio = producto_data.precio
         producto.disponible = producto_data.disponible
+        producto.stock_cantidad = producto_data.stock_cantidad
+        producto.imagen_url = producto_data.imagen_url
+        producto.categoria_id = producto_data.categoria_id
+        self.session.add(producto)
+        return producto
+
+    def set_disponible(self, producto: Producto, disponible: bool) -> Producto:
+        producto.disponible = disponible
+        self.session.add(producto)
+        return producto
+
+    def set_stock_cantidad(self, producto: Producto, stock: float) -> Producto:
+        producto.stock_cantidad = stock
         self.session.add(producto)
         return producto
 
@@ -79,51 +104,41 @@ class ProductoRepository:
         producto.deleted_at = datetime.now(timezone.utc)
         self.session.add(producto)
 
-    def delete(self, producto: Producto) -> None:
-        self.session.delete(producto)
-
-    def add_categoria(self, producto_id: int, categoria_id: int) -> ProductoCategoria:
-        link = ProductoCategoria(
-            producto_id=producto_id,
-            categoria_id=categoria_id,
-        )
-        self.session.add(link)
-        self.session.flush()
-        return link
-
-    def add_ingrediente(self, producto_id: int, ingrediente_id: int, cantidad: float) -> ProductoIngrediente:
+    def add_ingrediente(
+        self,
+        producto_id: int,
+        ingrediente_id: int,
+        cantidad: float,
+        es_alergeno: bool = False,
+    ) -> ProductoIngrediente:
         link = ProductoIngrediente(
             producto_id=producto_id,
             ingrediente_id=ingrediente_id,
             cantidad=cantidad,
+            es_alergeno=es_alergeno,
         )
         self.session.add(link)
         self.session.flush()
         return link
 
-    def assign_categorias(self, producto_id: int, categoria_ids: List[int]) -> None:
-        for cat_id in categoria_ids:
-            relacion = ProductoCategoria(producto_id=producto_id, categoria_id=cat_id)
-            self.session.add(relacion)
-
-    def assign_ingredientes(self, producto_id: int, ingredientes_data: List[ProductoIngredienteInput]) -> None:
+    def assign_ingredientes(
+        self, producto_id: int, ingredientes_data: List[ProductoIngredienteInput]
+    ) -> None:
         for ing_data in ingredientes_data:
-            relacion = ProductoIngrediente(
-                producto_id=producto_id,
-                ingrediente_id=ing_data.ingrediente_id,
-                cantidad=ing_data.cantidad
+            self.session.add(
+                ProductoIngrediente(
+                    producto_id=producto_id,
+                    ingrediente_id=ing_data.ingrediente_id,
+                    cantidad=ing_data.cantidad,
+                    es_alergeno=ing_data.es_alergeno,
+                )
             )
-            self.session.add(relacion)
-
-    def clear_categorias(self, producto_id: int) -> None:
-        for rel in self.session.exec(
-            select(ProductoCategoria).where(ProductoCategoria.producto_id == producto_id)
-        ):
-            self.session.delete(rel)
 
     def clear_ingredientes(self, producto_id: int) -> None:
         for rel in self.session.exec(
-            select(ProductoIngrediente).where(ProductoIngrediente.producto_id == producto_id)
+            select(ProductoIngrediente).where(
+                ProductoIngrediente.producto_id == producto_id
+            )
         ):
             self.session.delete(rel)
 
@@ -140,18 +155,23 @@ class ProductoRepository:
         return ingrediente
 
     def build_producto_read(self, producto: Producto) -> ProductoRead:
-        """Construye el schema ProductoRead con todas las relaciones."""
-        categorias = self.session.exec(
-            select(Categoria)
-            .join(ProductoCategoria)
-            .where(
-                ProductoCategoria.producto_id == producto.id,
-                Categoria.deleted_at.is_(None),
-            )
-        ).all()
+        # categoría (1:N)
+        categoria_obj = None
+        if producto.categoria_id:
+            cat = self.session.get(Categoria, producto.categoria_id)
+            if cat and cat.deleted_at is None:
+                categoria_obj = CategoriaRead(
+                    id=cat.id,
+                    nombre=cat.nombre,
+                    descripcion=cat.descripcion,
+                    parent_id=cat.parent_id,
+                    activa=cat.activa,
+                    created_at=cat.created_at,
+                    subcategorias=[],
+                )
 
         ingredientes_raw = self.session.exec(
-            select(Ingrediente, ProductoIngrediente.cantidad)
+            select(Ingrediente, ProductoIngrediente.cantidad, ProductoIngrediente.es_alergeno)
             .join(ProductoIngrediente)
             .where(
                 ProductoIngrediente.producto_id == producto.id,
@@ -164,28 +184,21 @@ class ProductoRepository:
                 ingrediente_id=ing.id,
                 nombre=ing.nombre,
                 cantidad=cantidad,
-                unidad_medida=ing.unidad_medida
+                unidad_medida=ing.unidad_medida,
+                es_alergeno=es_alg,
             )
-            for ing, cantidad in ingredientes_raw
+            for ing, cantidad, es_alg in ingredientes_raw
         ]
 
         return ProductoRead(
             id=producto.id,
             nombre=producto.nombre,
             descripcion=producto.descripcion,
-            precio=producto.precio,
+            precio=str(producto.precio),
             disponible=producto.disponible,
+            stock_cantidad=producto.stock_cantidad,
+            imagen_url=producto.imagen_url,
             created_at=producto.created_at,
-            categorias=[
-                CategoriaRead(
-                    id=cat.id,
-                    nombre=cat.nombre,
-                    descripcion=cat.descripcion,
-                    parent_id=cat.parent_id,
-                    created_at=cat.created_at,
-                    subcategorias=[],
-                )
-                for cat in categorias
-            ],
-            ingredientes=ingredientes
+            categoria=categoria_obj,
+            ingredientes=ingredientes,
         )

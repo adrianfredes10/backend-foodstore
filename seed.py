@@ -1,18 +1,24 @@
 """
-Script de seeding — inserta datos de prueba en la base de datos.
-Correr UNA sola vez: python seed.py
-Si los datos ya existen, los omite (no falla).
+script de seeding inserta datos de prueba
+correr manual: python seed.py
+si ya existen no los duplica
 """
+from dotenv import load_dotenv
+
+load_dotenv(encoding="utf-8")
+
 from sqlmodel import Session, select
-from app.database import engine, create_db_and_tables
-from app.models.categoria import Categoria, ProductoCategoria
+
+from app.database import create_db_and_tables, engine
+from app.models.categoria import Categoria
 from app.models.ingrediente import Ingrediente, ProductoIngrediente
 from app.models.producto import Producto
-
-
-# ──────────────────────────────────────────
-# DATOS DE PRUEBA
-# ──────────────────────────────────────────
+from app.seed_obligatorio import (
+    seed_estados_pedido,
+    seed_formas_pago,
+    seed_roles,
+    seed_usuario_admin,
+)
 
 CATEGORIAS = [
     {"nombre": "Bebidas Calientes", "descripcion": "Cafés, tés e infusiones"},
@@ -22,26 +28,26 @@ CATEGORIAS = [
 ]
 
 INGREDIENTES = [
-    {"nombre": "Leche",        "unidad_medida": "ml",       "stock_actual": 10000, "stock_minimo": 2000},
-    {"nombre": "Café",         "unidad_medida": "g",        "stock_actual": 3000,  "stock_minimo": 500},
-    {"nombre": "Azúcar",       "unidad_medida": "g",        "stock_actual": 5000,  "stock_minimo": 1000},
-    {"nombre": "Harina",       "unidad_medida": "g",        "stock_actual": 8000,  "stock_minimo": 1500},
-    {"nombre": "Huevo",        "unidad_medida": "unidades",  "stock_actual": 60,    "stock_minimo": 12},
-    {"nombre": "Manteca",      "unidad_medida": "g",        "stock_actual": 2000,  "stock_minimo": 500},
-    {"nombre": "Cacao",        "unidad_medida": "g",        "stock_actual": 1500,  "stock_minimo": 300},
-    {"nombre": "Crema",        "unidad_medida": "ml",       "stock_actual": 3000,  "stock_minimo": 500},
-    {"nombre": "Frutillas",    "unidad_medida": "g",        "stock_actual": 2000,  "stock_minimo": 400},
-    {"nombre": "Jugo de naranja", "unidad_medida": "ml",   "stock_actual": 4000,  "stock_minimo": 800},
+    {"nombre": "Leche",           "unidad_medida": "ml",       "stock_actual": 10000, "stock_minimo": 2000},
+    {"nombre": "Café",            "unidad_medida": "g",        "stock_actual": 3000,  "stock_minimo": 500},
+    {"nombre": "Azúcar",          "unidad_medida": "g",        "stock_actual": 5000,  "stock_minimo": 1000},
+    {"nombre": "Harina",          "unidad_medida": "g",        "stock_actual": 8000,  "stock_minimo": 1500},
+    {"nombre": "Huevo",           "unidad_medida": "unidades", "stock_actual": 60,    "stock_minimo": 12},
+    {"nombre": "Manteca",         "unidad_medida": "g",        "stock_actual": 2000,  "stock_minimo": 500},
+    {"nombre": "Cacao",           "unidad_medida": "g",        "stock_actual": 1500,  "stock_minimo": 300},
+    {"nombre": "Crema",           "unidad_medida": "ml",       "stock_actual": 3000,  "stock_minimo": 500},
+    {"nombre": "Frutillas",       "unidad_medida": "g",        "stock_actual": 2000,  "stock_minimo": 400},
+    {"nombre": "Jugo de naranja", "unidad_medida": "ml",       "stock_actual": 4000,  "stock_minimo": 800},
 ]
 
-# nombre, descripcion, precio, disponible, categorias (nombres), ingredientes (nombre, cantidad)
+# nombre, descripcion, precio, disponible, categoria (primera se usa como FK 1:N), ingredientes
 PRODUCTOS = [
     {
         "nombre": "Cappuccino",
         "descripcion": "Café espresso con leche espumosa",
         "precio": 450.00,
         "disponible": True,
-        "categorias": ["Bebidas Calientes"],
+        "categoria": "Bebidas Calientes",
         "ingredientes": [
             {"nombre": "Leche", "cantidad": 200},
             {"nombre": "Café",  "cantidad": 30},
@@ -52,11 +58,11 @@ PRODUCTOS = [
         "descripcion": "Café suave con leche caliente",
         "precio": 350.00,
         "disponible": True,
-        "categorias": ["Bebidas Calientes"],
+        "categoria": "Bebidas Calientes",
         "ingredientes": [
-            {"nombre": "Leche", "cantidad": 250},
-            {"nombre": "Café",  "cantidad": 20},
-            {"nombre": "Azúcar","cantidad": 10},
+            {"nombre": "Leche",  "cantidad": 250},
+            {"nombre": "Café",   "cantidad": 20},
+            {"nombre": "Azúcar", "cantidad": 10},
         ],
     },
     {
@@ -64,7 +70,7 @@ PRODUCTOS = [
         "descripcion": "Licuado fresco de frutillas con leche",
         "precio": 500.00,
         "disponible": True,
-        "categorias": ["Bebidas Frías"],
+        "categoria": "Bebidas Frías",
         "ingredientes": [
             {"nombre": "Leche",     "cantidad": 300},
             {"nombre": "Frutillas", "cantidad": 150},
@@ -76,7 +82,7 @@ PRODUCTOS = [
         "descripcion": "Jugo natural exprimido",
         "precio": 380.00,
         "disponible": True,
-        "categorias": ["Bebidas Frías"],
+        "categoria": "Bebidas Frías",
         "ingredientes": [
             {"nombre": "Jugo de naranja", "cantidad": 300},
         ],
@@ -86,12 +92,12 @@ PRODUCTOS = [
         "descripcion": "3 medialunas de manteca artesanales",
         "precio": 400.00,
         "disponible": True,
-        "categorias": ["Comidas", "Postres"],
+        "categoria": "Comidas",
         "ingredientes": [
-            {"nombre": "Harina",   "cantidad": 200},
-            {"nombre": "Manteca",  "cantidad": 80},
-            {"nombre": "Azúcar",   "cantidad": 30},
-            {"nombre": "Huevo",    "cantidad": 2},
+            {"nombre": "Harina",  "cantidad": 200},
+            {"nombre": "Manteca", "cantidad": 80},
+            {"nombre": "Azúcar",  "cantidad": 30},
+            {"nombre": "Huevo",   "cantidad": 2},
         ],
     },
     {
@@ -99,7 +105,7 @@ PRODUCTOS = [
         "descripcion": "Porción de torta húmeda de chocolate",
         "precio": 650.00,
         "disponible": True,
-        "categorias": ["Postres"],
+        "categoria": "Postres",
         "ingredientes": [
             {"nombre": "Harina",  "cantidad": 150},
             {"nombre": "Cacao",   "cantidad": 80},
@@ -112,12 +118,7 @@ PRODUCTOS = [
 ]
 
 
-# ──────────────────────────────────────────
-# FUNCIONES DE SEEDING
-# ──────────────────────────────────────────
-
 def seed_categorias(session: Session) -> dict[str, Categoria]:
-    """Inserta categorías y devuelve un dict {nombre: objeto}"""
     resultado = {}
     for data in CATEGORIAS:
         existing = session.exec(
@@ -126,22 +127,17 @@ def seed_categorias(session: Session) -> dict[str, Categoria]:
                 Categoria.deleted_at.is_(None),
             )
         ).first()
-
         if existing:
-            print(f"  [skip] Categoría '{data['nombre']}' ya existe")
             resultado[data["nombre"]] = existing
         else:
-            categoria = Categoria(**data)
-            session.add(categoria)
-            session.flush()  # para obtener el id
-            print(f"  [ok]   Categoría '{data['nombre']}' creada (id={categoria.id})")
-            resultado[data["nombre"]] = categoria
-
+            cat = Categoria(**data)
+            session.add(cat)
+            session.flush()
+            resultado[data["nombre"]] = cat
     return resultado
 
 
 def seed_ingredientes(session: Session) -> dict[str, Ingrediente]:
-    """Inserta ingredientes y devuelve un dict {nombre: objeto}"""
     resultado = {}
     for data in INGREDIENTES:
         existing = session.exec(
@@ -150,17 +146,13 @@ def seed_ingredientes(session: Session) -> dict[str, Ingrediente]:
                 Ingrediente.deleted_at.is_(None),
             )
         ).first()
-
         if existing:
-            print(f"  [skip] Ingrediente '{data['nombre']}' ya existe")
             resultado[data["nombre"]] = existing
         else:
-            ingrediente = Ingrediente(**data)
-            session.add(ingrediente)
+            ing = Ingrediente(**data)
+            session.add(ing)
             session.flush()
-            print(f"  [ok]   Ingrediente '{data['nombre']}' creado (id={ingrediente.id})")
-            resultado[data["nombre"]] = ingrediente
-
+            resultado[data["nombre"]] = ing
     return resultado
 
 
@@ -168,8 +160,7 @@ def seed_productos(
     session: Session,
     categorias: dict[str, Categoria],
     ingredientes: dict[str, Ingrediente],
-):
-    """Inserta productos con sus relaciones"""
+) -> None:
     for data in PRODUCTOS:
         existing = session.exec(
             select(Producto).where(
@@ -177,67 +168,49 @@ def seed_productos(
                 Producto.deleted_at.is_(None),
             )
         ).first()
-
         if existing:
-            print(f"  [skip] Producto '{data['nombre']}' ya existe")
             continue
 
-        # Crear producto
+        cat = categorias.get(data["categoria"])
+        if not cat:
+            continue
+
         producto = Producto(
             nombre=data["nombre"],
             descripcion=data["descripcion"],
             precio=data["precio"],
             disponible=data["disponible"],
+            stock_cantidad=data.get("stock_cantidad", 100.0),
+            categoria_id=cat.id,
         )
         session.add(producto)
-        session.flush()  # necesario para obtener el id antes de crear relaciones
+        session.flush()
 
-        # Asignar categorías
-        for nombre_cat in data["categorias"]:
-            cat = categorias.get(nombre_cat)
-            if not cat:
-                print(f"  [warn] Categoría '{nombre_cat}' no encontrada, saltando...")
-                continue
-            session.add(ProductoCategoria(producto_id=producto.id, categoria_id=cat.id))
-
-        # Asignar ingredientes
         for ing_data in data["ingredientes"]:
             ing = ingredientes.get(ing_data["nombre"])
             if not ing:
-                print(f"  [warn] Ingrediente '{ing_data['nombre']}' no encontrado, saltando...")
                 continue
-            session.add(ProductoIngrediente(
-                producto_id=producto.id,
-                ingrediente_id=ing.id,
-                cantidad=ing_data["cantidad"],
-            ))
+            session.add(
+                ProductoIngrediente(
+                    producto_id=producto.id,
+                    ingrediente_id=ing.id,
+                    cantidad=ing_data["cantidad"],
+                    es_alergeno=ing_data.get("es_alergeno", False),
+                )
+            )
 
-        print(f"  [ok]   Producto '{data['nombre']}' creado (id={producto.id})")
-
-
-# ──────────────────────────────────────────
-# MAIN
-# ──────────────────────────────────────────
 
 def main():
-    print("\n🌱 Iniciando seeding...\n")
-
-    # Asegurarse de que las tablas existen
     create_db_and_tables()
-
     with Session(engine) as session:
-        print("📂 Categorías:")
+        seed_roles(session)
+        seed_estados_pedido(session)
+        seed_formas_pago(session)
         categorias = seed_categorias(session)
-
-        print("\n🧪 Ingredientes:")
         ingredientes = seed_ingredientes(session)
-
-        print("\n🍕 Productos:")
         seed_productos(session, categorias, ingredientes)
-
+        seed_usuario_admin(session)
         session.commit()
-
-    print("\n✅ Seeding completado!\n")
 
 
 if __name__ == "__main__":
