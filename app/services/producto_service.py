@@ -155,7 +155,7 @@ class ProductoService:
                     detail="Producto no encontrado",
                 )
             uow.productos.set_disponible(producto, disponible)
-            uow.refresh(producto)
+            uow.flush()
             return uow.productos.build_producto_read(producto)
 
     def set_stock_cantidad(self, producto_id: int, stock: float) -> ProductoRead:
@@ -167,5 +167,5 @@ class ProductoService:
                     detail="Producto no encontrado",
                 )
             uow.productos.set_stock_cantidad(producto, stock)
-            uow.refresh(producto)
+            uow.flush()
             return uow.productos.build_producto_read(producto)
