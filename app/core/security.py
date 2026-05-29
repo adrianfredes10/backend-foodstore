@@ -1,5 +1,6 @@
 # bcrypt y jwt mirar settings
 from datetime import datetime, timedelta, timezone
+from functools import lru_cache
 from typing import Any
 
 from jose import JWTError, jwt
@@ -7,16 +8,23 @@ from passlib.context import CryptContext
 
 from app.core.config import get_settings
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+@lru_cache
+def _pwd_context() -> CryptContext:
+    s = get_settings()
+    return CryptContext(
+        schemes=["bcrypt"],
+        deprecated="auto",
+        bcrypt__rounds=s.BCRYPT_ROUNDS,
+    )
 
 
 def hash_password(plain: str) -> str:
-    s = get_settings()
-    return pwd_context.hash(plain, rounds=s.BCRYPT_ROUNDS)
+    return _pwd_context().hash(plain)
 
 
 def verify_password(plain: str, hashed: str) -> bool:
-    return pwd_context.verify(plain, hashed)
+    return _pwd_context().verify(plain, hashed)
 
 
 def create_access_token(*, subject_email: str, user_id: int, roles: list[str]) -> str:

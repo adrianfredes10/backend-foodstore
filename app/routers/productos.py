@@ -3,7 +3,7 @@ from typing import Annotated, Optional
 from fastapi import APIRouter, Depends, Path, Query, status
 
 from app.constants.codigos import RolCodigo
-from app.deps.auth_deps import require_roles
+from app.core.auth_deps import require_roles
 from app.models.seguridad import Usuario
 from app.schemas.common import PaginatedResponse
 from app.schemas.producto import (

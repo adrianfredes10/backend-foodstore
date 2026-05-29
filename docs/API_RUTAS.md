@@ -12,7 +12,7 @@ Documentación interactiva: **`GET /docs`** (Swagger) y **`GET /redoc`**.
 - **JWT:** firmado con **python-jose** (HS256).
 - **Vencimiento:** `ACCESS_TOKEN_EXPIRE_MINUTES` (por defecto 30 min en `app/core/config.py`).
 - **Clave secreta:** variable de entorno `SECRET_KEY`.
-- Las rutas protegidas leen el JWT desde la **cookie** (`COOKIE_NAME = "access_token"` en `app/deps/auth_deps.py`).
+- Las rutas protegidas leen el JWT desde la **cookie** (`COOKIE_NAME = "access_token"` en `app/core/auth_deps.py`).
 - El front debe enviar cookies: `credentials: "include"` en fetch o `withCredentials: true` en Axios.
 
 ---

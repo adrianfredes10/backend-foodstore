@@ -3,7 +3,7 @@ from typing import Annotated, List, Optional
 from fastapi import APIRouter, Depends, Path, Query, status
 
 from app.constants.codigos import RolCodigo
-from app.deps.auth_deps import get_current_user, require_roles
+from app.core.auth_deps import get_current_user, require_roles
 from app.models.seguridad import Usuario
 from app.schemas.pedido_schemas import (
     CambiarEstadoRequest,

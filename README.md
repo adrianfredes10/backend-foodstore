@@ -70,9 +70,8 @@ app/
 ├── constants/            # códigos de rol y estado
 ├── core/
 │   ├── config.py         # Settings con pydantic-settings
-│   └── security.py       # hash_password, verify_password, JWT
-├── deps/
-│   └── auth_deps.py      # get_current_user, require_roles
+│   ├── security.py       # hash_password, verify_password, JWT
+│   └── auth_deps.py      # get_current_user, require_roles (cookie JWT)
 ├── models/               # tablas SQLModel
 ├── schemas/              # DTOs Pydantic (Create, Read, Update)
 ├── repositories/         # acceso a base de datos
@@ -97,6 +96,7 @@ Patrones adicionales:
 ## Autenticación
 
 - Login con JSON `{"email": "...", "password": "..."}` → cookie HttpOnly `access_token` (JWT, 30 min)
+- Contraseñas hasheadas con **bcrypt cost factor 12** (`BCRYPT_ROUNDS` en `.env`, default 12)
 - El front debe enviar cookies: `withCredentials: true` en Axios o `credentials: "include"` en fetch
 - Roles: `ADMIN`, `STOCK`, `PEDIDOS`, `CLIENT`
 

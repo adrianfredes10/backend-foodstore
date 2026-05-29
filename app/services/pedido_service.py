@@ -316,13 +316,13 @@ class PedidoService:
             return self._armar_read(p)
 
     def avanzar_estado(self, pedido_id: int, actor_id: int) -> PedidoRead:
+        # resuelve el siguiente estado; el historial se registra en cambiar_estado()
         with self.uow as uow:
             p = uow.pedidos.get_pedido(pedido_id)
             if not p:
                 raise HTTPException(status.HTTP_404_NOT_FOUND, "Pedido no encontrado")
             estado_actual = uow.pedidos.get_estado_by_id(p.estado_id)
             cod_actual = estado_actual.codigo
-            # toma el primer estado permitido que no sea CANCELADO
             siguientes = [
                 c
                 for c in TRANSICIONES.get(cod_actual, [])

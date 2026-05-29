@@ -2,7 +2,7 @@ from typing import Annotated, List
 
 from fastapi import APIRouter, Depends, Path, status
 
-from app.deps.auth_deps import get_current_user
+from app.core.auth_deps import get_current_user
 from app.models.seguridad import Usuario
 from app.schemas.direccion_schemas import DireccionCreate, DireccionRead, DireccionUpdate
 from app.services.direccion_service import DireccionService

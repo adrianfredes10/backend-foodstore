@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, Response, status
 from fastapi.responses import JSONResponse
 
 from app.core.config import get_settings
-from app.deps.auth_deps import COOKIE_NAME, get_current_user
+from app.core.auth_deps import COOKIE_NAME, get_current_user
 from app.models.seguridad import Usuario
 from app.schemas.auth_schemas import LoginRequest, RegistroRequest, UsuarioPublic
 from app.services.auth_service import AuthService, _to_public
