@@ -5,6 +5,7 @@ from sqlmodel import Session, select
 
 from app.models.ingrediente import Ingrediente, ProductoIngrediente
 from app.models.producto import Producto
+from app.models.unidad_medida import UnidadMedida
 from app.repositories.base_repository import BaseRepository
 from app.schemas.ingrediente import IngredienteCreate, IngredienteUpdate
 
@@ -12,6 +13,11 @@ from app.schemas.ingrediente import IngredienteCreate, IngredienteUpdate
 class IngredienteRepository(BaseRepository[Ingrediente]):
     def __init__(self, session: Session):
         super().__init__(session, Ingrediente)
+
+    def list_unidades_medida(self) -> List[UnidadMedida]:
+        return self.session.exec(
+            select(UnidadMedida).order_by(UnidadMedida.id)
+        ).all()
 
     def get_all(self, skip: int = 0, limit: int = 100) -> List[Ingrediente]:
         statement = (

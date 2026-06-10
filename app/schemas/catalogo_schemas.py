@@ -13,3 +13,11 @@ class EstadoPedidoRead(SQLModel):
     codigo: str
     nombre: str
     orden: int
+    es_terminal: bool = False
+
+
+class UnidadMedidaRead(SQLModel):
+    id: int
+    nombre: str
+    simbolo: str
+    tipo: str

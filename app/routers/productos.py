@@ -1,6 +1,6 @@
 from typing import Annotated, Optional
 
-from fastapi import APIRouter, Depends, Path, Query, status
+from fastapi import APIRouter, Depends, File, Path, Query, UploadFile, status
 
 from app.constants.codigos import RolCodigo
 from app.core.auth_deps import require_roles
@@ -13,7 +13,9 @@ from app.schemas.producto import (
     ProductoStockBody,
     ProductoUpdate,
 )
+from app.schemas.upload_schemas import ProductoImagenesResponse, UploadImagenResponse
 from app.services.producto_service import ProductoService
+from app.services.upload_service import UploadService
 from app.uow import UnitOfWork, get_uow
 
 router = APIRouter(tags=["productos"])
@@ -96,3 +98,21 @@ def patch_disponibilidad(
     _user: Annotated[Usuario, Depends(require_roles(RolCodigo.ADMIN, RolCodigo.STOCK))],
 ):
     return ProductoService(uow).set_disponibilidad(id, body.disponible)
+
+
+@router.patch("/{id}/imagenes", response_model=UploadImagenResponse)
+async def patch_imagenes_producto(
+    id: Annotated[int, Path(gt=0)],
+    file: Annotated[UploadFile, File()],
+    _admin: Annotated[Usuario, Depends(require_roles(RolCodigo.ADMIN))],
+    uow: UnitOfWork = Depends(get_uow),
+):
+    return await UploadService(uow).subir_imagen_producto(id, file)
+
+
+@router.get("/{id}/imagenes", response_model=ProductoImagenesResponse)
+def get_imagenes_producto(
+    id: Annotated[int, Path(gt=0)],
+    uow: UnitOfWork = Depends(get_uow),
+):
+    return UploadService(uow).listar_imagenes_producto(id)

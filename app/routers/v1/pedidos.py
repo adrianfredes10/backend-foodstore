@@ -4,9 +4,11 @@ from fastapi import APIRouter, Depends, Path, Query, status
 
 from app.constants.codigos import RolCodigo
 from app.core.auth_deps import get_current_user, require_roles
+from app.core.ws_manager import manager
 from app.models.seguridad import Usuario
 from app.schemas.pedido_schemas import (
     CambiarEstadoRequest,
+    CancelarRequest,
     HistorialEstadoRead,
     PedidoCreate,
     PedidoRead,
@@ -23,6 +25,15 @@ def _roles(user: Usuario) -> set[str]:
 
 def _es_staff(roles: set[str]) -> bool:
     return RolCodigo.ADMIN in roles or RolCodigo.PEDIDOS in roles
+
+
+async def _emitir_evento(svc: PedidoService) -> None:
+    # broadcast post-commit, fuera del UoW (RN-06)
+    ev = svc.evento_ws
+    if not ev:
+        return
+    await manager.broadcast_to_roles([RolCodigo.ADMIN, RolCodigo.PEDIDOS], ev)
+    await manager.broadcast_to_order(ev["pedido_id"], ev)
 
 
 @router.get("", response_model=List[PedidoRead])
@@ -50,12 +61,15 @@ def listar_pedidos(
 
 
 @router.post("", response_model=PedidoRead, status_code=status.HTTP_201_CREATED)
-def crear_pedido(
+async def crear_pedido(
     body: PedidoCreate,
     user: Annotated[Usuario, Depends(get_current_user)],
     uow: UnitOfWork = Depends(get_uow),
 ):
-    return PedidoService(uow).crear(user.id, body)
+    svc = PedidoService(uow)
+    read = svc.crear(user.id, body)
+    await _emitir_evento(svc)
+    return read
 
 
 @router.get("/{pedido_id}", response_model=PedidoRead)
@@ -68,15 +82,18 @@ def obtener_pedido(
 
 
 @router.patch("/{pedido_id}/estado", response_model=PedidoRead)
-def cambiar_estado_pedido(
+async def cambiar_estado_pedido(
     pedido_id: Annotated[int, Path(gt=0)],
     body: CambiarEstadoRequest,
     user: Annotated[Usuario, Depends(get_current_user)],
     uow: UnitOfWork = Depends(get_uow),
 ):
-    return PedidoService(uow).cambiar_estado(
+    svc = PedidoService(uow)
+    read = svc.cambiar_estado(
         pedido_id, body.estado_codigo, user.id, _roles(user), body.observacion
     )
+    await _emitir_evento(svc)
+    return read
 
 
 @router.get("/{pedido_id}/historial", response_model=List[HistorialEstadoRead])
@@ -91,16 +108,20 @@ def obtener_historial(
 
 
 @router.post("/{pedido_id}/cancelar", response_model=PedidoRead)
-def cancelar_pedido(
+async def cancelar_pedido(
     pedido_id: Annotated[int, Path(gt=0)],
+    body: CancelarRequest,
     user: Annotated[Usuario, Depends(get_current_user)],
     uow: UnitOfWork = Depends(get_uow),
 ):
-    return PedidoService(uow).cancelar(pedido_id, user.id)
+    svc = PedidoService(uow)
+    read = svc.cancelar(pedido_id, user.id, body.motivo)
+    await _emitir_evento(svc)
+    return read
 
 
 @router.post("/{pedido_id}/avanzar", response_model=PedidoRead)
-def avanzar_pedido(
+async def avanzar_pedido(
     pedido_id: Annotated[int, Path(gt=0)],
     staff: Annotated[
         Usuario,
@@ -108,4 +129,7 @@ def avanzar_pedido(
     ],
     uow: UnitOfWork = Depends(get_uow),
 ):
-    return PedidoService(uow).avanzar_estado(pedido_id, staff.id)
+    svc = PedidoService(uow)
+    read = svc.avanzar_estado(pedido_id, staff.id)
+    await _emitir_evento(svc)
+    return read

@@ -56,3 +56,5 @@ class ProductoRead(ProductoBase):
     # objeto único, no lista
     categoria: Optional[CategoriaRead]
     ingredientes: List[ProductoIngredienteRead]
+    # array de URLs de imagenes (spec v7)
+    imagenes_url: List[str] = []

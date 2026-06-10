@@ -10,6 +10,8 @@ class Categoria(SQLModel, table=True):
     nombre: str = Field(min_length=3, max_length=100, index=True)
     descripcion: Optional[str] = Field(default=None, max_length=500)
     activa: bool = Field(default=True)
+    # url de Cloudinary (v7); se setea via modulo /uploads
+    imagen_url: Optional[str] = Field(default=None, max_length=500)
     parent_id: Optional[int] = Field(
         default=None,
         foreign_key="categoria.id",

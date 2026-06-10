@@ -20,6 +20,11 @@ class PedidoCreate(SQLModel):
     observaciones: Optional[str] = Field(default=None, max_length=500)
 
 
+class CancelarRequest(SQLModel):
+    # RN-05: motivo obligatorio al cancelar
+    motivo: str = Field(min_length=1, max_length=500)
+
+
 class DetallePedidoRead(SQLModel):
     producto_id: Optional[int]
     producto_nombre: str
@@ -47,6 +52,9 @@ class PedidoRead(SQLModel):
     direccion_entrega: DireccionRead
     forma_pago: FormaPagoRead
     estado: EstadoPedidoRead
+    subtotal: Decimal
+    descuento: Decimal
+    costo_envio: Decimal
     total: Decimal
     observaciones: Optional[str]
     fecha_creacion: datetime

@@ -8,10 +8,10 @@ class RolCodigo:
     CLIENT = "CLIENT"
 
 
+# FSM v7: 5 estados, sin EN_CAMINO
 class EstadoPedidoCodigo:
     PENDIENTE = "PENDIENTE"
     CONFIRMADO = "CONFIRMADO"
     EN_PREP = "EN_PREP"
-    EN_CAMINO = "EN_CAMINO"
     ENTREGADO = "ENTREGADO"
     CANCELADO = "CANCELADO"

@@ -20,7 +20,11 @@ from app.schemas.pedido_schemas import (
 )
 from app.uow import UnitOfWork
 
-# mapa de transiciones válidas por estado actual
+# costo de envio fijo v1 (spec v7); el descuento todavia no se aplica
+COSTO_ENVIO = Decimal("50.00")
+
+# mapa de transiciones validas por estado actual (FSM v7, 5 estados)
+# ENTREGADO y CANCELADO son terminales (RN-01): lista vacia
 TRANSICIONES: dict[str, list[str]] = {
     EstadoPedidoCodigo.PENDIENTE: [
         EstadoPedidoCodigo.CONFIRMADO,
@@ -30,8 +34,10 @@ TRANSICIONES: dict[str, list[str]] = {
         EstadoPedidoCodigo.EN_PREP,
         EstadoPedidoCodigo.CANCELADO,
     ],
-    EstadoPedidoCodigo.EN_PREP: [EstadoPedidoCodigo.EN_CAMINO],
-    EstadoPedidoCodigo.EN_CAMINO: [EstadoPedidoCodigo.ENTREGADO],
+    EstadoPedidoCodigo.EN_PREP: [
+        EstadoPedidoCodigo.ENTREGADO,
+        EstadoPedidoCodigo.CANCELADO,
+    ],
     EstadoPedidoCodigo.ENTREGADO: [],
     EstadoPedidoCodigo.CANCELADO: [],
 }
@@ -39,13 +45,40 @@ TRANSICIONES: dict[str, list[str]] = {
 
 def _build_estado_read(e) -> EstadoPedidoRead:
     return EstadoPedidoRead(
-        id=e.id, codigo=e.codigo, nombre=e.nombre, orden=e.orden
+        id=e.id,
+        codigo=e.codigo,
+        nombre=e.nombre,
+        orden=e.orden,
+        es_terminal=e.es_terminal,
     )
+
+
+def _armar_evento(
+    *,
+    pedido_id: int,
+    estado_anterior: Optional[str],
+    estado_nuevo: str,
+    usuario_id: Optional[int],
+    motivo: Optional[str],
+    event: str = "estado_cambiado",
+) -> dict:
+    # payload plano segun CONTRATO-API (no anidado en data)
+    return {
+        "event": event,
+        "pedido_id": pedido_id,
+        "estado_anterior": estado_anterior,
+        "estado_nuevo": estado_nuevo,
+        "usuario_id": usuario_id,
+        "motivo": motivo,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
 
 
 class PedidoService:
     def __init__(self, uow: UnitOfWork):
         self.uow = uow
+        # ultimo evento a emitir por WS; lo lee el router post-commit (RN-06)
+        self.evento_ws: Optional[dict] = None
 
     def _armar_read(self, pedido: Pedido) -> PedidoRead:
         p = self.uow.pedidos.get_pedido(pedido.id)
@@ -116,6 +149,9 @@ class PedidoService:
             direccion_entrega=dir_read,
             forma_pago=forma_read,
             estado=estado_read,
+            subtotal=p.subtotal,
+            descuento=p.descuento,
+            costo_envio=p.costo_envio,
             total=p.total,
             observaciones=p.observaciones,
             fecha_creacion=p.created_at,
@@ -145,7 +181,7 @@ class PedidoService:
                     detail="Falta estado PENDIENTE en BD (seed)",
                 )
 
-            total = Decimal("0")
+            subtotal = Decimal("0")
             items_prep: list[tuple] = []
 
             for item in data.items:
@@ -165,28 +201,34 @@ class PedidoService:
                         status.HTTP_409_CONFLICT,
                         detail=f"Stock insuficiente para '{prod.nombre}'",
                     )
-                subtotal = prod.precio * Decimal(str(item.cantidad))
-                total += subtotal
-                items_prep.append((prod, item, subtotal))
+                sub_item = prod.precio * Decimal(str(item.cantidad))
+                subtotal += sub_item
+                items_prep.append((prod, item, sub_item))
+
+            descuento = Decimal("0")
+            total = subtotal - descuento + COSTO_ENVIO
 
             ped = Pedido(
                 usuario_id=usuario_id,
                 direccion_entrega_id=data.direccion_entrega_id,
                 forma_pago_id=data.forma_pago_id,
                 estado_id=est_pend.id,
+                subtotal=subtotal,
+                descuento=descuento,
+                costo_envio=COSTO_ENVIO,
                 total=total,
                 observaciones=data.observaciones,
             )
             uow.pedidos.create_pedido(ped)
 
-            for prod, item, subtotal in items_prep:
+            for prod, item, sub_item in items_prep:
                 det = DetallePedido(
                     pedido_id=ped.id,
                     producto_id=prod.id,
                     producto_nombre=prod.nombre,
                     precio_unitario=prod.precio,
                     cantidad=item.cantidad,
-                    subtotal=subtotal,
+                    subtotal=sub_item,
                 )
                 uow.pedidos.add_detalle(det)
                 prod.stock_cantidad -= item.cantidad
@@ -201,6 +243,13 @@ class PedidoService:
                 )
             )
             uow.flush()
+            self.evento_ws = _armar_evento(
+                pedido_id=ped.id,
+                estado_anterior=None,
+                estado_nuevo=EstadoPedidoCodigo.PENDIENTE,
+                usuario_id=usuario_id,
+                motivo=None,
+            )
             return self._armar_read(ped)
 
     def listar(
@@ -258,6 +307,14 @@ class PedidoService:
 
             estado_actual = uow.pedidos.get_estado_by_id(p.estado_id)
             cod_actual = estado_actual.codigo
+
+            # RN-01: estado terminal no admite transiciones
+            if estado_actual.es_terminal:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail=f"El pedido esta en estado terminal '{cod_actual}', no admite cambios",
+                )
+
             permitidos = TRANSICIONES.get(cod_actual, [])
 
             if nuevo_codigo not in permitidos:
@@ -313,6 +370,15 @@ class PedidoService:
                 )
             )
             uow.flush()
+            es_cancelado = nuevo_codigo == EstadoPedidoCodigo.CANCELADO
+            self.evento_ws = _armar_evento(
+                pedido_id=p.id,
+                estado_anterior=cod_actual,
+                estado_nuevo=nuevo_codigo,
+                usuario_id=actor_id,
+                motivo=observacion if es_cancelado else None,
+                event="pedido_cancelado" if es_cancelado else "estado_cambiado",
+            )
             return self._armar_read(p)
 
     def avanzar_estado(self, pedido_id: int, actor_id: int) -> PedidoRead:
@@ -341,12 +407,14 @@ class PedidoService:
             {RolCodigo.ADMIN},
         )
 
-    def cancelar(self, pedido_id: int, usuario_id: int) -> PedidoRead:
+    def cancelar(self, pedido_id: int, usuario_id: int, motivo: str) -> PedidoRead:
+        # RN-05: motivo obligatorio al cancelar
         return self.cambiar_estado(
             pedido_id,
             EstadoPedidoCodigo.CANCELADO,
             usuario_id,
             set(),
+            motivo,
         )
 
     def obtener_historial(

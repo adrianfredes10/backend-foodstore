@@ -1,7 +1,14 @@
 from fastapi import HTTPException, status
 
 from app.constants.codigos import RolCodigo
-from app.core.security import hash_password, verify_password, create_access_token
+from app.core.security import (
+    create_access_token,
+    generar_refresh_token,
+    hash_password,
+    hash_refresh_token,
+    refresh_expira_en,
+    verify_password,
+)
 from app.models.seguridad import Usuario
 from app.schemas.auth_schemas import RolPublic, UsuarioPublic
 from app.uow import UnitOfWork
@@ -65,7 +72,7 @@ class AuthService:
                 )
             return _to_public(reloaded)
 
-    def login(self, email: str, password: str) -> tuple[UsuarioPublic, str]:
+    def login(self, email: str, password: str) -> tuple[UsuarioPublic, str, str]:
         with self.uow as uow:
             user = uow.usuarios.get_by_email(email)
             if not user or not verify_password(password, user.password_hash):
@@ -79,9 +86,51 @@ class AuthService:
                     detail="Cuenta desactivada",
                 )
             roles = [r.codigo for r in user.roles]
-            token = create_access_token(
+            access = create_access_token(
                 subject_email=user.email,
                 user_id=user.id,
                 roles=roles,
             )
-            return _to_public(user), token
+            refresh_plano = self._emitir_refresh(uow, user.id)
+            return _to_public(user), access, refresh_plano
+
+    def refresh(self, refresh_plano: str) -> tuple[UsuarioPublic, str, str]:
+        with self.uow as uow:
+            rt = uow.refresh_tokens.get_valido(hash_refresh_token(refresh_plano))
+            if not rt:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Refresh token invalido o expirado",
+                )
+            user = uow.usuarios.get_by_id(rt.usuario_id)
+            if not user or not user.activo:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Usuario invalido o inactivo",
+                )
+            # rotacion: se revoca el viejo y se emite uno nuevo
+            uow.refresh_tokens.revoke(rt)
+            roles = [r.codigo for r in user.roles]
+            access = create_access_token(
+                subject_email=user.email,
+                user_id=user.id,
+                roles=roles,
+            )
+            nuevo_refresh = self._emitir_refresh(uow, user.id)
+            return _to_public(user), access, nuevo_refresh
+
+    def logout(self, refresh_plano: str | None) -> None:
+        if not refresh_plano:
+            return
+        with self.uow as uow:
+            uow.refresh_tokens.revoke_by_hash(hash_refresh_token(refresh_plano))
+
+    @staticmethod
+    def _emitir_refresh(uow: UnitOfWork, usuario_id: int) -> str:
+        plano = generar_refresh_token()
+        uow.refresh_tokens.create(
+            usuario_id=usuario_id,
+            token_hash=hash_refresh_token(plano),
+            expires_at=refresh_expira_en(),
+        )
+        return plano

@@ -6,6 +6,7 @@ from app.repositories.producto_repository import ProductoRepository
 from app.repositories.rol_repository import RolRepository
 from app.repositories.direccion_repository import DireccionRepository
 from app.repositories.pedido_repository import PedidoRepository
+from app.repositories.refresh_token_repository import RefreshTokenRepository
 from app.repositories.usuario_repository import UsuarioRepository
 
 
@@ -16,7 +17,9 @@ class UnitOfWork:
         self.session: Session = None
 
     def __enter__(self) -> "UnitOfWork":
-        self.session = Session(engine)
+        # expire_on_commit=False: los objetos siguen usables tras el commit
+        # (evita DetachedInstanceError al serializar fuera del with)
+        self.session = Session(engine, expire_on_commit=False)
         self.categorias = CategoriaRepository(self.session)
         self.ingredientes = IngredienteRepository(self.session)
         self.productos = ProductoRepository(self.session)
@@ -24,6 +27,7 @@ class UnitOfWork:
         self.usuarios = UsuarioRepository(self.session)
         self.pedidos = PedidoRepository(self.session)
         self.direcciones = DireccionRepository(self.session)
+        self.refresh_tokens = RefreshTokenRepository(self.session)
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):

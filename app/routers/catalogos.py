@@ -2,7 +2,11 @@ from typing import List
 
 from fastapi import APIRouter, Depends
 
-from app.schemas.catalogo_schemas import EstadoPedidoRead, FormaPagoRead
+from app.schemas.catalogo_schemas import (
+    EstadoPedidoRead,
+    FormaPagoRead,
+    UnidadMedidaRead,
+)
 from app.uow import UnitOfWork, get_uow
 
 router = APIRouter(tags=["catalogos"])
@@ -21,6 +25,23 @@ def listar_formas_pago(uow: UnitOfWork = Depends(get_uow)):
 def listar_estados_pedido(uow: UnitOfWork = Depends(get_uow)):
     with uow:
         return [
-            EstadoPedidoRead(id=e.id, codigo=e.codigo, nombre=e.nombre, orden=e.orden)
+            EstadoPedidoRead(
+                id=e.id,
+                codigo=e.codigo,
+                nombre=e.nombre,
+                orden=e.orden,
+                es_terminal=e.es_terminal,
+            )
             for e in uow.pedidos.list_estados_pedido()
+        ]
+
+
+@router.get("/unidades-medida", response_model=List[UnidadMedidaRead])
+def listar_unidades_medida(uow: UnitOfWork = Depends(get_uow)):
+    with uow:
+        return [
+            UnidadMedidaRead(
+                id=u.id, nombre=u.nombre, simbolo=u.simbolo, tipo=u.tipo
+            )
+            for u in uow.ingredientes.list_unidades_medida()
         ]

@@ -8,6 +8,9 @@ from app.database import engine
 from app.models.seguridad import Usuario
 
 COOKIE_NAME = "access_token"
+REFRESH_COOKIE_NAME = "refresh_token"
+# la cookie de refresh solo viaja a los endpoints de auth
+REFRESH_COOKIE_PATH = "/api/v1/auth"
 
 
 def get_current_user(

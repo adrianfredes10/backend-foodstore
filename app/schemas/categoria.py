@@ -35,5 +35,6 @@ class CategoriaRead(SQLModel):
     descripcion: Optional[str]
     parent_id: Optional[int]
     activa: bool
+    imagen_url: Optional[str] = None
     created_at: datetime
     subcategorias: List[CategoriaSimple] = Field(default_factory=list)

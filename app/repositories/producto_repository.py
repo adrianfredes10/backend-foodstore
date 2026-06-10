@@ -190,6 +190,12 @@ class ProductoRepository(BaseRepository[Producto]):
             for ing, cantidad, es_alg in ingredientes_raw
         ]
 
+        imagenes_url = [
+            img["url"]
+            for img in (producto.imagenes_data or [])
+            if isinstance(img, dict) and img.get("url")
+        ]
+
         return ProductoRead(
             id=producto.id,
             nombre=producto.nombre,
@@ -201,4 +207,5 @@ class ProductoRepository(BaseRepository[Producto]):
             created_at=producto.created_at,
             categoria=categoria_obj,
             ingredientes=ingredientes,
+            imagenes_url=imagenes_url,
         )

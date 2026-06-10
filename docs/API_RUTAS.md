@@ -120,6 +120,19 @@ Definidos en `app/constants/codigos.py`:
 
 ---
 
+### `/api/v1/uploads` — Imágenes (Cloudinary)
+
+Solo rol **ADMIN**. `multipart/form-data`. Tipos: `jpeg`, `png`, `webp`, `gif`. Máx **5MB**. Folder `foodstore/productos`.
+
+| Método | Ruta | Descripción |
+|--------|------|-------------|
+| POST | `/api/v1/uploads/producto/{id}/imagen` | Campo `file`. Sube a Cloudinary, guarda `imagen_url` + `public_id` en el producto y borra la imagen anterior si había. Responde `{"imagen_url": "..."}`. |
+| DELETE | `/api/v1/uploads/producto/{id}/imagen` | Borra la imagen de Cloudinary y limpia `imagen_url`. Responde 204. |
+
+**Errores:** `400` si Cloudinary no está configurado · `404` producto inexistente · `413` supera 5MB · `422` tipo no permitido. Credenciales por `.env` (`CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`).
+
+---
+
 ### `/api/v1/direcciones`
 
 Todas requieren **usuario autenticado** (cookie JWT).
@@ -155,8 +168,7 @@ Todas requieren **usuario autenticado**. El cliente solo ve sus pedidos; ADMIN/P
 |---------------|---------------|
 | `PENDIENTE` | `CONFIRMADO`, `CANCELADO` |
 | `CONFIRMADO` | `EN_PREP`, `CANCELADO` |
-| `EN_PREP` | `EN_CAMINO` |
-| `EN_CAMINO` | `ENTREGADO` |
+| `EN_PREP` | `ENTREGADO`, `CANCELADO` |
 | `ENTREGADO` | — (final) |
 | `CANCELADO` | — (final) |
 

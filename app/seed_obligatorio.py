@@ -10,6 +10,7 @@ from app.database import engine
 from app.models.pedido import EstadoPedido, FormaPago
 from app.models.direccion_entrega import DireccionEntrega
 from app.models.seguridad import Rol, Usuario, UsuarioRol
+from app.models.unidad_medida import UnidadMedida
 
 ROLES_DATA = [
     (RolCodigo.ADMIN, "Administrador"),
@@ -18,14 +19,13 @@ ROLES_DATA = [
     (RolCodigo.CLIENT, "Cliente"),
 ]
 
-# (codigo, nombre, orden)
+# (codigo, nombre, orden, es_terminal) -- FSM v7: 5 estados, sin EN_CAMINO
 ESTADOS_DATA = [
-    (EstadoPedidoCodigo.PENDIENTE, "Pendiente", 1),
-    (EstadoPedidoCodigo.CONFIRMADO, "Confirmado", 2),
-    (EstadoPedidoCodigo.EN_PREP, "En preparacion", 3),
-    (EstadoPedidoCodigo.EN_CAMINO, "En camino", 4),
-    (EstadoPedidoCodigo.ENTREGADO, "Entregado", 5),
-    (EstadoPedidoCodigo.CANCELADO, "Cancelado", 6),
+    (EstadoPedidoCodigo.PENDIENTE, "Pendiente", 1, False),
+    (EstadoPedidoCodigo.CONFIRMADO, "Confirmado", 2, False),
+    (EstadoPedidoCodigo.EN_PREP, "En preparacion", 3, False),
+    (EstadoPedidoCodigo.ENTREGADO, "Entregado", 4, True),
+    (EstadoPedidoCodigo.CANCELADO, "Cancelado", 5, True),
 ]
 
 FORMAS_DATA = [
@@ -33,6 +33,16 @@ FORMAS_DATA = [
     ("TARJETA", "Tarjeta debito/credito"),
     ("TRANSFERENCIA", "Transferencia bancaria"),
     ("MERCADOPAGO", "Mercado Pago"),
+]
+
+# (nombre, simbolo, tipo) -- entidad v7 obligatoria en seed (PDF 12.2)
+UNIDADES_DATA = [
+    ("kilogramo", "kg", "peso"),
+    ("gramo", "g", "peso"),
+    ("litro", "L", "volumen"),
+    ("mililitro", "ml", "volumen"),
+    ("unidad", "ud", "contable"),
+    ("porciones", "porc", "contable"),
 ]
 
 
@@ -48,19 +58,25 @@ def seed_roles(session: Session) -> None:
 
 
 def seed_estados_pedido(session: Session) -> None:
-    for codigo, nombre, orden in ESTADOS_DATA:
+    for codigo, nombre, orden, es_terminal in ESTADOS_DATA:
         existing = session.exec(
             select(EstadoPedido).where(EstadoPedido.codigo == codigo)
         ).first()
         if existing:
-            if existing.orden == 0:
-                existing.orden = orden
-                session.add(existing)
-                print(f"  [OK]   estado '{codigo}' orden actualizado")
-            else:
-                print(f"  [skip] estado '{codigo}' ya existe")
+            # realinear orden y es_terminal si la fila viene de una version vieja
+            existing.orden = orden
+            existing.es_terminal = es_terminal
+            session.add(existing)
+            print(f"  [OK]   estado '{codigo}' actualizado")
             continue
-        session.add(EstadoPedido(codigo=codigo, nombre=nombre, orden=orden))
+        session.add(
+            EstadoPedido(
+                codigo=codigo,
+                nombre=nombre,
+                orden=orden,
+                es_terminal=es_terminal,
+            )
+        )
         session.flush()
         print(f"  [OK]   estado '{codigo}' insertado")
 
@@ -76,8 +92,21 @@ def seed_formas_pago(session: Session) -> None:
         print(f"  [OK]   forma_pago '{codigo}' insertada")
 
 
+def seed_unidades_medida(session: Session) -> None:
+    for nombre, simbolo, tipo in UNIDADES_DATA:
+        existing = session.exec(
+            select(UnidadMedida).where(UnidadMedida.simbolo == simbolo)
+        ).first()
+        if existing:
+            print(f"  [skip] unidad '{simbolo}' ya existe")
+            continue
+        session.add(UnidadMedida(nombre=nombre, simbolo=simbolo, tipo=tipo))
+        session.flush()
+        print(f"  [OK]   unidad '{simbolo}' insertada")
+
+
 def seed_usuario_admin(session: Session) -> None:
-    email = os.getenv("SEED_ADMIN_EMAIL", "admin@foodstore.local")
+    email = os.getenv("SEED_ADMIN_EMAIL", "admin@foodstore.com")
     password = os.getenv("SEED_ADMIN_PASSWORD", "Admin1234!")
     existing = session.exec(select(Usuario).where(Usuario.email == email)).first()
     if existing:
@@ -157,6 +186,8 @@ def run_seed_obligatorio() -> None:
         seed_estados_pedido(session)
         print("--- formas de pago ---")
         seed_formas_pago(session)
+        print("--- unidades de medida ---")
+        seed_unidades_medida(session)
         print("--- usuario admin ---")
         seed_usuario_admin(session)
         print("--- usuario cliente ---")

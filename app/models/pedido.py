@@ -13,6 +13,8 @@ class EstadoPedido(SQLModel, table=True):
     codigo: str = Field(unique=True, index=True, max_length=32)
     nombre: str = Field(max_length=120)
     orden: int = Field(default=0)
+    # estado terminal: no admite transiciones salientes (RN-01)
+    es_terminal: bool = Field(default=False)
 
 
 class FormaPago(SQLModel, table=True):
@@ -32,6 +34,10 @@ class Pedido(SQLModel, table=True):
     direccion_entrega_id: int = Field(foreign_key="direccion_entrega.id")
     forma_pago_id: int = Field(foreign_key="forma_pago.id")
     estado_id: int = Field(foreign_key="estado_pedido.id", index=True)
+    # montos v7: total = subtotal - descuento + costo_envio
+    subtotal: Decimal = Field(default=0, max_digits=12, decimal_places=2, ge=0)
+    descuento: Decimal = Field(default=0, max_digits=12, decimal_places=2, ge=0)
+    costo_envio: Decimal = Field(default=0, max_digits=12, decimal_places=2, ge=0)
     total: Decimal = Field(max_digits=12, decimal_places=2, ge=0)
     observaciones: Optional[str] = Field(default=None, max_length=500)
     fecha_confirmacion: Optional[datetime] = Field(default=None)

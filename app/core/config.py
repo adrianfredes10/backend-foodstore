@@ -24,9 +24,20 @@ class Settings(BaseSettings):
     SECRET_KEY: str  # obligatorio en .env
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    # refresh token (cookie aparte, persistido y revocable)
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
     # bcrypt rounds (>=12)
     BCRYPT_ROUNDS: int = 12
+
+    # rate limit auth: max intentos por ventana en login/register
+    RATE_LIMIT_AUTH_MAX: int = 5
+    RATE_LIMIT_AUTH_WINDOW_MINUTES: int = 15
+
+    # cloudinary (imagenes de productos); secret solo en .env
+    CLOUDINARY_CLOUD_NAME: str = ""
+    CLOUDINARY_API_KEY: str = ""
+    CLOUDINARY_API_SECRET: str = ""
 
     # cors: lista separada por coma
     CORS_ORIGINS: str = "http://localhost:5173,http://localhost:5174"

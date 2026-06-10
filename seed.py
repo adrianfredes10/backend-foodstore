@@ -21,6 +21,7 @@ from app.models.ingrediente import Ingrediente, ProductoIngrediente
 from app.models.pedido import DetallePedido, EstadoPedido, FormaPago, HistorialEstadoPedido, Pedido
 from app.models.producto import Producto
 from app.models.seguridad import Rol, Usuario, UsuarioRol
+from app.services.pedido_service import COSTO_ENVIO
 from app.seed_obligatorio import (
     seed_estados_pedido,
     seed_formas_pago,
@@ -588,7 +589,7 @@ PEDIDOS_DATA = [
         "cliente_email": "juan@cliente.com",
         "forma_pago": "MERCADOPAGO",
         "estado_final": EstadoPedidoCodigo.ENTREGADO,
-        "estados_intermedios": [EstadoPedidoCodigo.CONFIRMADO, EstadoPedidoCodigo.EN_PREP, EstadoPedidoCodigo.EN_CAMINO],
+        "estados_intermedios": [EstadoPedidoCodigo.CONFIRMADO, EstadoPedidoCodigo.EN_PREP],
         "observaciones": "Sin azúcar por favor",
         "items": [("Cappuccino", 2), ("Medialunas", 1)],
     },
@@ -627,7 +628,7 @@ PEDIDOS_DATA = [
     {
         "cliente_email": "juan@cliente.com",
         "forma_pago": "TARJETA",
-        "estado_final": EstadoPedidoCodigo.EN_CAMINO,
+        "estado_final": EstadoPedidoCodigo.ENTREGADO,
         "estados_intermedios": [EstadoPedidoCodigo.CONFIRMADO, EstadoPedidoCodigo.EN_PREP],
         "observaciones": None,
         "items": [("Pasta Bolognesa", 1), ("Ensalada César", 1)],
@@ -636,7 +637,7 @@ PEDIDOS_DATA = [
         "cliente_email": "juan@cliente.com",
         "forma_pago": "EFECTIVO",
         "estado_final": EstadoPedidoCodigo.ENTREGADO,
-        "estados_intermedios": [EstadoPedidoCodigo.CONFIRMADO, EstadoPedidoCodigo.EN_PREP, EstadoPedidoCodigo.EN_CAMINO],
+        "estados_intermedios": [EstadoPedidoCodigo.CONFIRMADO, EstadoPedidoCodigo.EN_PREP],
         "observaciones": None,
         "items": [("Sándwich de Pollo", 2), ("Papas Fritas", 1), ("Limonada Natural", 2)],
     },
@@ -644,7 +645,7 @@ PEDIDOS_DATA = [
         "cliente_email": "juan@cliente.com",
         "forma_pago": "MERCADOPAGO",
         "estado_final": EstadoPedidoCodigo.ENTREGADO,
-        "estados_intermedios": [EstadoPedidoCodigo.CONFIRMADO, EstadoPedidoCodigo.EN_PREP, EstadoPedidoCodigo.EN_CAMINO],
+        "estados_intermedios": [EstadoPedidoCodigo.CONFIRMADO, EstadoPedidoCodigo.EN_PREP],
         "observaciones": "Doble porción de papas",
         "items": [("Hamburguesa Clásica", 1), ("Papas Fritas", 2), ("Licuado de Banana", 1)],
     },
@@ -653,7 +654,7 @@ PEDIDOS_DATA = [
         "cliente_email": "juan@cliente.com",
         "forma_pago": "MERCADOPAGO",
         "estado_final": EstadoPedidoCodigo.ENTREGADO,
-        "estados_intermedios": [EstadoPedidoCodigo.CONFIRMADO, EstadoPedidoCodigo.EN_PREP, EstadoPedidoCodigo.EN_CAMINO],
+        "estados_intermedios": [EstadoPedidoCodigo.CONFIRMADO, EstadoPedidoCodigo.EN_PREP],
         "observaciones": None,
         "items": [("Tostado de Jamón y Queso", 1), ("Café con Leche", 1)],
     },
@@ -685,14 +686,14 @@ PEDIDOS_DATA = [
         "cliente_email": "juan@cliente.com",
         "forma_pago": "MERCADOPAGO",
         "estado_final": EstadoPedidoCodigo.ENTREGADO,
-        "estados_intermedios": [EstadoPedidoCodigo.CONFIRMADO, EstadoPedidoCodigo.EN_PREP, EstadoPedidoCodigo.EN_CAMINO],
+        "estados_intermedios": [EstadoPedidoCodigo.CONFIRMADO, EstadoPedidoCodigo.EN_PREP],
         "observaciones": None,
         "items": [("Empanadas de Carne x4", 2), ("Papas Fritas", 1), ("Espresso Doble", 2)],
     },
     {
         "cliente_email": "juan@cliente.com",
         "forma_pago": "TRANSFERENCIA",
-        "estado_final": EstadoPedidoCodigo.EN_CAMINO,
+        "estado_final": EstadoPedidoCodigo.ENTREGADO,
         "estados_intermedios": [EstadoPedidoCodigo.CONFIRMADO, EstadoPedidoCodigo.EN_PREP],
         "observaciones": None,
         "items": [("Pasta Primavera", 1), ("Ensalada Mixta", 1), ("Té Verde", 1)],
@@ -763,7 +764,7 @@ def seed_pedidos(session: Session) -> None:
         if not forma_pago or not estado_final:
             continue
 
-        total = Decimal("0")
+        subtotal = Decimal("0")
         items_resueltos = []
         for nombre_prod, cantidad in pedido_data["items"]:
             prod = session.exec(
@@ -771,29 +772,35 @@ def seed_pedidos(session: Session) -> None:
             ).first()
             if not prod:
                 continue
-            subtotal = Decimal(str(prod.precio)) * cantidad
-            total += subtotal
-            items_resueltos.append((prod, cantidad, subtotal))
+            sub_item = Decimal(str(prod.precio)) * cantidad
+            subtotal += sub_item
+            items_resueltos.append((prod, cantidad, sub_item))
+
+        descuento = Decimal("0")
+        total = subtotal - descuento + COSTO_ENVIO
 
         pedido = Pedido(
             usuario_id=user.id,
             direccion_entrega_id=direccion.id,
             forma_pago_id=forma_pago.id,
             estado_id=estado_final.id,
+            subtotal=subtotal,
+            descuento=descuento,
+            costo_envio=COSTO_ENVIO,
             total=total,
             observaciones=pedido_data["observaciones"],
         )
         session.add(pedido)
         session.flush()
 
-        for prod, cantidad, subtotal in items_resueltos:
+        for prod, cantidad, sub_item in items_resueltos:
             session.add(DetallePedido(
                 pedido_id=pedido.id,
                 producto_id=prod.id,
                 producto_nombre=prod.nombre,
                 precio_unitario=Decimal(str(prod.precio)),
                 cantidad=cantidad,
-                subtotal=subtotal,
+                subtotal=sub_item,
             ))
 
         secuencia = [EstadoPedidoCodigo.PENDIENTE] + pedido_data["estados_intermedios"]
