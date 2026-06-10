@@ -28,7 +28,7 @@ class ProductoBase(SQLModel):
 
 
 class ProductoCreate(ProductoBase):
-    # 1:N — un solo id de categoría
+    # 1:N - un solo id de categoria
     precio: Decimal = Field(gt=0, max_digits=10, decimal_places=2)
     categoria_id: int
     ingredientes: List[ProductoIngredienteInput] = Field(min_length=1)
@@ -50,10 +50,10 @@ class ProductoStockBody(SQLModel):
 
 class ProductoRead(ProductoBase):
     id: int
-    # precio serializado como string para evitar problemas de precisión en js
+    # precio serializado como string para evitar problemas de precision en js
     precio: str
     created_at: datetime
-    # objeto único, no lista
+    # objeto unico, no lista
     categoria: Optional[CategoriaRead]
     ingredientes: List[ProductoIngredienteRead]
     # array de URLs de imagenes (spec v7)

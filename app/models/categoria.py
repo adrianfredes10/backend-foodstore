@@ -32,5 +32,5 @@ class Categoria(SQLModel, table=True):
         },
     )
 
-    # relación 1:N hacia productos (un producto tiene una sola categoría)
+    # relacion 1:N hacia productos (un producto tiene una sola categoria)
     productos: List["Producto"] = Relationship(back_populates="categoria")

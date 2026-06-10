@@ -155,7 +155,7 @@ class ProductoRepository(BaseRepository[Producto]):
         return ingrediente
 
     def build_producto_read(self, producto: Producto) -> ProductoRead:
-        # categoría (1:N)
+        # categoria (1:N)
         categoria_obj = None
         if producto.categoria_id:
             cat = self.session.get(Categoria, producto.categoria_id)

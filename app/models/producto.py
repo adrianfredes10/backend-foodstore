@@ -18,7 +18,7 @@ class Producto(SQLModel, table=True):
     imagen_url: Optional[str] = Field(default=None, max_length=500)
     # public_id de Cloudinary (para reemplazar/borrar la imagen principal)
     imagen_public_id: Optional[str] = Field(default=None, max_length=255)
-    # array de imagenes: [{"url": "...", "public_id": "..."}] — spec v7
+    # array de imagenes: [{"url": "...", "public_id": "..."}] (spec v7)
     imagenes_data: Optional[list] = Field(
         default=None, sa_column=Column(JSON, nullable=True)
     )

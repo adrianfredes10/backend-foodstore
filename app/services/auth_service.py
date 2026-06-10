@@ -15,7 +15,7 @@ from app.uow import UnitOfWork
 
 
 def _to_public(u: Usuario) -> UsuarioPublic:
-    # serializa dentro de la sesión activa para evitar DetachedInstanceError
+    # serializa dentro de la sesion activa para evitar DetachedInstanceError
     return UsuarioPublic(
         id=u.id,
         email=u.email,

@@ -30,7 +30,7 @@ class DireccionRepository(BaseRepository[DireccionEntrega]):
         return d
 
     def get_by_id_para_pedido(self, direccion_id: int) -> Optional[DireccionEntrega]:
-        # sin filtro de deleted_at: la dirección pudo ser borrada después del pedido
+        # sin filtro de deleted_at: la direccion pudo ser borrada despues del pedido
         return self.session.get(DireccionEntrega, direccion_id)
 
     def create(self, row: DireccionEntrega) -> DireccionEntrega:

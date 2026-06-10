@@ -44,7 +44,7 @@ def get_current_user(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Usuario inválido o inactivo",
             )
-        # forzar la carga de roles mientras la sesión sigue abierta
+        # forzar la carga de roles mientras la sesion sigue abierta
         _ = [r.codigo for r in usuario.roles]
         return usuario
 

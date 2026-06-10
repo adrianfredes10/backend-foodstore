@@ -4,7 +4,7 @@ import asyncio
 from typing import List
 
 import cloudinary.uploader
-from fastapi import HTTPException, Query, UploadFile, status
+from fastapi import HTTPException, UploadFile, status
 
 from app.core.cloudinary_setup import esta_configurado
 from app.schemas.upload_schemas import (
