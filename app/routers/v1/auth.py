@@ -79,6 +79,12 @@ def refresh(
     refresh_token: Annotated[Optional[str], Cookie(alias=REFRESH_COOKIE_NAME)] = None,
     uow: UnitOfWork = Depends(get_uow),
 ):
+    from fastapi import HTTPException, status as http_status
+    if not refresh_token:
+        raise HTTPException(
+            status_code=http_status.HTTP_401_UNAUTHORIZED,
+            detail="Refresh token ausente",
+        )
     svc = AuthService(uow)
     user_public, access, nuevo_refresh = svc.refresh(refresh_token)
     resp = JSONResponse(content=user_public.model_dump(mode="json"))

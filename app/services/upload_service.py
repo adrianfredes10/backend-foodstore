@@ -116,10 +116,12 @@ class UploadService:
             cloudinary.uploader.destroy, public_id, resource_type="image"
         )
 
-    def set_imagenes_producto(
+    async def set_imagenes_producto(
         self, producto_id: int, urls_a_conservar: list[str]
     ) -> ProductoImagenesResponse:
         # reemplaza el array: solo quedan los items cuya url esta en la lista
+        public_ids_a_borrar: list[str] = []
+
         with self.uow as uow:
             prod = uow.productos.get_by_id(producto_id)
             if not prod:
@@ -130,6 +132,11 @@ class UploadService:
             imagenes_actuales = prod.imagenes_data or []
             urls_set = set(urls_a_conservar)
             nuevas = [img for img in imagenes_actuales if img.get("url") in urls_set]
+            removidas = [img for img in imagenes_actuales if img.get("url") not in urls_set]
+            public_ids_a_borrar = [
+                img["public_id"] for img in removidas if img.get("public_id")
+            ]
+
             prod.imagenes_data = nuevas
 
             # sincronizar imagen_url principal
@@ -141,6 +148,12 @@ class UploadService:
                 prod.imagen_public_id = None
 
             uow.session.add(prod)
+
+        # destroy de las removidas fuera del UoW (post-commit)
+        for pid in public_ids_a_borrar:
+            await asyncio.to_thread(
+                cloudinary.uploader.destroy, pid, resource_type="image"
+            )
 
         imagenes = [
             ImagenItem(url=img["url"], public_id=img["public_id"])

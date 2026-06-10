@@ -104,13 +104,13 @@ def patch_disponibilidad(
 
 
 @router.patch("/{id}/imagenes", response_model=ProductoImagenesResponse)
-def patch_imagenes_producto(
+async def patch_imagenes_producto(
     id: Annotated[int, Path(gt=0)],
     body: ProductoSetImagenesBody,
     _admin: Annotated[Usuario, Depends(require_roles(RolCodigo.ADMIN))],
     uow: UnitOfWork = Depends(get_uow),
 ):
-    return UploadService(uow).set_imagenes_producto(id, body.imagenes_url)
+    return await UploadService(uow).set_imagenes_producto(id, body.imagenes_url)
 
 
 @router.get("/{id}/imagenes", response_model=ProductoImagenesResponse)

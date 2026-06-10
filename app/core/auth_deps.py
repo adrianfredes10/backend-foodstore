@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from typing import Annotated, Optional
 
 from fastapi import Cookie, Depends, HTTPException, status
@@ -5,7 +6,7 @@ from sqlmodel import Session, select
 
 from app.core.security import decode_access_token
 from app.database import engine
-from app.models.seguridad import Usuario
+from app.models.seguridad import Usuario, UsuarioRol
 
 COOKIE_NAME = "access_token"
 REFRESH_COOKIE_NAME = "refresh_token"
@@ -44,8 +45,23 @@ def get_current_user(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Usuario inválido o inactivo",
             )
-        # forzar la carga de roles mientras la sesion sigue abierta
-        _ = [r.codigo for r in usuario.roles]
+        # filtrar roles vencidos (D-05: expires_at en UsuarioRol)
+        now = datetime.now(timezone.utc)
+        ur_rows = session.exec(
+            select(UsuarioRol).where(UsuarioRol.usuario_id == int(uid))
+        ).all()
+        rol_ids_vigentes: set[int] = set()
+        for ur in ur_rows:
+            exp = ur.expires_at
+            if exp is None:
+                rol_ids_vigentes.add(ur.rol_id)
+            else:
+                if exp.tzinfo is None:
+                    exp = exp.replace(tzinfo=timezone.utc)
+                if exp > now:
+                    rol_ids_vigentes.add(ur.rol_id)
+        # reemplazar la lista de roles con solo los vigentes
+        usuario.roles = [r for r in usuario.roles if r.id in rol_ids_vigentes]
         return usuario
 
 

@@ -113,9 +113,9 @@ class PedidoService:
             DetallePedidoRead(
                 producto_id=d.producto_id,
                 producto_nombre=d.producto_nombre,
-                precio_unitario=d.precio_unitario,
+                precio_unitario=str(d.precio_unitario),
                 cantidad=d.cantidad,
-                subtotal=d.subtotal,
+                subtotal=str(d.subtotal),
             )
             for d in (p.detalles or [])
         ]
@@ -149,10 +149,10 @@ class PedidoService:
             direccion_entrega=dir_read,
             forma_pago=forma_read,
             estado=estado_read,
-            subtotal=p.subtotal,
-            descuento=p.descuento,
-            costo_envio=p.costo_envio,
-            total=p.total,
+            subtotal=str(p.subtotal),
+            descuento=str(p.descuento),
+            costo_envio=str(p.costo_envio),
+            total=str(p.total),
             observaciones=p.observaciones,
             fecha_creacion=p.created_at,
             fecha_confirmacion=p.fecha_confirmacion,

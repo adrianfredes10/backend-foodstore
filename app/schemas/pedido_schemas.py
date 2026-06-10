@@ -1,5 +1,4 @@
 from datetime import datetime
-from decimal import Decimal
 from typing import List, Optional
 
 from sqlmodel import SQLModel, Field
@@ -28,9 +27,9 @@ class CancelarRequest(SQLModel):
 class DetallePedidoRead(SQLModel):
     producto_id: Optional[int]
     producto_nombre: str
-    precio_unitario: Decimal
+    precio_unitario: str
     cantidad: float
-    subtotal: Decimal
+    subtotal: str
 
 
 class UsuarioSimpleRead(SQLModel):
@@ -52,10 +51,10 @@ class PedidoRead(SQLModel):
     direccion_entrega: DireccionRead
     forma_pago: FormaPagoRead
     estado: EstadoPedidoRead
-    subtotal: Decimal
-    descuento: Decimal
-    costo_envio: Decimal
-    total: Decimal
+    subtotal: str
+    descuento: str
+    costo_envio: str
+    total: str
     observaciones: Optional[str]
     fecha_creacion: datetime
     fecha_confirmacion: Optional[datetime]

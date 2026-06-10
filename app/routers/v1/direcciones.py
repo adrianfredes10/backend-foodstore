@@ -38,6 +38,7 @@ def obtener(
 
 
 @router.patch("/{direccion_id}", response_model=DireccionRead)
+@router.put("/{direccion_id}", response_model=DireccionRead)
 def actualizar(
     direccion_id: Annotated[int, Path(gt=0)],
     body: DireccionUpdate,
