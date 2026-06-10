@@ -78,6 +78,10 @@ class UploadService:
             imagen_url=nueva_url,
             public_id=nuevo_public_id,
             imagenes_url=imagenes_url,
+            width=result.get("width"),
+            height=result.get("height"),
+            format=result.get("format"),
+            resource_type=result.get("resource_type"),
         )
 
     async def borrar_imagen_producto(
@@ -110,6 +114,42 @@ class UploadService:
         # destroy fuera del UoW
         await asyncio.to_thread(
             cloudinary.uploader.destroy, public_id, resource_type="image"
+        )
+
+    def set_imagenes_producto(
+        self, producto_id: int, urls_a_conservar: list[str]
+    ) -> ProductoImagenesResponse:
+        # reemplaza el array: solo quedan los items cuya url esta en la lista
+        with self.uow as uow:
+            prod = uow.productos.get_by_id(producto_id)
+            if not prod:
+                raise HTTPException(
+                    status.HTTP_404_NOT_FOUND, "Producto no encontrado"
+                )
+
+            imagenes_actuales = prod.imagenes_data or []
+            urls_set = set(urls_a_conservar)
+            nuevas = [img for img in imagenes_actuales if img.get("url") in urls_set]
+            prod.imagenes_data = nuevas
+
+            # sincronizar imagen_url principal
+            if nuevas:
+                prod.imagen_url = nuevas[0]["url"]
+                prod.imagen_public_id = nuevas[0]["public_id"]
+            else:
+                prod.imagen_url = None
+                prod.imagen_public_id = None
+
+            uow.session.add(prod)
+
+        imagenes = [
+            ImagenItem(url=img["url"], public_id=img["public_id"])
+            for img in nuevas
+            if img.get("url") and img.get("public_id")
+        ]
+        return ProductoImagenesResponse(
+            imagenes_url=[img.url for img in imagenes],
+            imagenes=imagenes,
         )
 
     def listar_imagenes_producto(

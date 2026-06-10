@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, File, Path, Query, UploadFile, status
+from fastapi import APIRouter, Depends, File, Path, UploadFile, status
 
 from app.constants.codigos import RolCodigo
 from app.core.auth_deps import require_roles
@@ -23,11 +23,12 @@ async def subir_imagen_producto(
 
 
 @router.delete(
-    "/producto/{producto_id}/imagen", status_code=status.HTTP_204_NO_CONTENT
+    "/producto/{producto_id}/imagen/{public_id:path}",
+    status_code=status.HTTP_204_NO_CONTENT,
 )
 async def borrar_imagen_producto(
     producto_id: Annotated[int, Path(gt=0)],
-    public_id: Annotated[str, Query(min_length=1)],
+    public_id: str,
     _admin: Annotated[Usuario, Depends(require_roles(RolCodigo.ADMIN))],
     uow: UnitOfWork = Depends(get_uow),
 ):

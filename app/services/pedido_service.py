@@ -326,6 +326,13 @@ class PedidoService:
                     ),
                 )
 
+            # RN-05: motivo obligatorio al cancelar (cualquier actor)
+            if nuevo_codigo == EstadoPedidoCodigo.CANCELADO and not observacion:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail="El motivo de cancelacion es obligatorio",
+                )
+
             # cliente solo puede cancelar su propio pedido
             if RolCodigo.ADMIN not in roles and RolCodigo.PEDIDOS not in roles:
                 if actor_id != p.usuario_id:
