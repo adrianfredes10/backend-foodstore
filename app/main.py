@@ -16,6 +16,7 @@ from app.routers import (
 )
 from app.routers.uploads import router as uploads_router
 from app.routers.v1.auth import router as auth_v1_router
+from app.routers.v1.pagos import router as pagos_v1_router
 from app.routers.ws import router as ws_router
 from app.seed_obligatorio import run_seed_obligatorio
 
@@ -48,9 +49,9 @@ app.include_router(productos_router, prefix="/api/v1/productos")
 app.include_router(direcciones_v1_router, prefix="/api/v1/direcciones")
 app.include_router(pedidos_v1_router, prefix="/api/v1/pedidos")
 app.include_router(admin_usuarios_v1_router, prefix="/api/v1/admin")
+app.include_router(pagos_v1_router, prefix="/api/v1/pagos")
 app.include_router(uploads_router, prefix="/api/v1/uploads")
 app.include_router(catalogos_router, prefix="/api/v1")
-# WebSocket: ruta absoluta /ws/pedidos (sin prefijo)
 app.include_router(ws_router)
 
 

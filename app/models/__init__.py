@@ -9,6 +9,7 @@ from app.models.pedido import (
     HistorialEstadoPedido,
     Pedido,
 )
+from app.models.pago import Pago
 from app.models.producto import Producto
 from app.models.seguridad import RefreshToken, Rol, Usuario, UsuarioRol
 from app.models.unidad_medida import UnidadMedida
@@ -29,4 +30,5 @@ __all__ = [
     "DetallePedido",
     "HistorialEstadoPedido",
     "DireccionEntrega",
+    "Pago",
 ]

@@ -5,6 +5,7 @@ from app.repositories.ingrediente_repository import IngredienteRepository
 from app.repositories.producto_repository import ProductoRepository
 from app.repositories.rol_repository import RolRepository
 from app.repositories.direccion_repository import DireccionRepository
+from app.repositories.pago_repository import PagoRepository
 from app.repositories.pedido_repository import PedidoRepository
 from app.repositories.refresh_token_repository import RefreshTokenRepository
 from app.repositories.usuario_repository import UsuarioRepository
@@ -28,6 +29,7 @@ class UnitOfWork:
         self.pedidos = PedidoRepository(self.session)
         self.direcciones = DireccionRepository(self.session)
         self.refresh_tokens = RefreshTokenRepository(self.session)
+        self.pagos = PagoRepository(self.session)
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):

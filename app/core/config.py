@@ -39,6 +39,13 @@ class Settings(BaseSettings):
     CLOUDINARY_API_KEY: str = ""
     CLOUDINARY_API_SECRET: str = ""
 
+    # mercadopago (Checkout PRO); access token solo en .env
+    MERCADOPAGO_ACCESS_TOKEN: str = ""
+    MERCADOPAGO_PUBLIC_KEY: str = ""
+    # urls para back_urls / notification_url y redirect post-pago
+    BACKEND_URL: str = "http://localhost:8000"
+    FRONTEND_URL: str = "http://localhost:5173"
+
     # cors: lista separada por coma
     CORS_ORIGINS: str = "http://localhost:5173,http://localhost:5174"
 

@@ -33,14 +33,12 @@ def test_evento_cancelado_lleva_motivo():
         estado_nuevo=EstadoPedidoCodigo.CANCELADO,
         usuario_id=7,
         motivo="sin stock",
-        event="pedido_cancelado",
     )
-    assert ev["event"] == "pedido_cancelado"
-    assert ev["pedido_id"] == 1
-    assert ev["motivo"] == "sin stock"
-    # payload plano: las claves van al nivel raiz, no anidadas en "data"
-    assert "data" not in ev
-    assert "timestamp" in ev
+    # shape del CONTRATO-API: {"event": "PEDIDO_ACTUALIZADO", "data": {...}}
+    assert ev["event"] == "PEDIDO_ACTUALIZADO"
+    assert ev["data"]["pedido_id"] == 1
+    assert ev["data"]["motivo"] == "sin stock"
+    assert "timestamp" in ev["data"]
 
 
 def test_evento_creacion_sin_estado_anterior():
@@ -51,6 +49,6 @@ def test_evento_creacion_sin_estado_anterior():
         usuario_id=3,
         motivo=None,
     )
-    assert ev["estado_anterior"] is None
-    assert ev["estado_nuevo"] == EstadoPedidoCodigo.PENDIENTE
-    assert ev["event"] == "estado_cambiado"
+    assert ev["event"] == "PEDIDO_ACTUALIZADO"
+    assert ev["data"]["estado_anterior"] is None
+    assert ev["data"]["estado_nuevo"] == EstadoPedidoCodigo.PENDIENTE

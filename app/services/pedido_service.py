@@ -60,17 +60,19 @@ def _armar_evento(
     estado_nuevo: str,
     usuario_id: Optional[int],
     motivo: Optional[str],
-    event: str = "estado_cambiado",
 ) -> dict:
-    # payload plano segun CONTRATO-API (no anidado en data)
+    # shape segun CONTRATO-API §WS: {"event": "PEDIDO_ACTUALIZADO", "data": {...}}
+    # la cancelacion tambien es un cambio de estado: mismo evento, motivo en data
     return {
-        "event": event,
-        "pedido_id": pedido_id,
-        "estado_anterior": estado_anterior,
-        "estado_nuevo": estado_nuevo,
-        "usuario_id": usuario_id,
-        "motivo": motivo,
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "event": "PEDIDO_ACTUALIZADO",
+        "data": {
+            "pedido_id": pedido_id,
+            "estado_anterior": estado_anterior,
+            "estado_nuevo": estado_nuevo,
+            "usuario_id": usuario_id,
+            "motivo": motivo,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        },
     }
 
 
@@ -384,7 +386,6 @@ class PedidoService:
                 estado_nuevo=nuevo_codigo,
                 usuario_id=actor_id,
                 motivo=observacion if es_cancelado else None,
-                event="pedido_cancelado" if es_cancelado else "estado_cambiado",
             )
             return self._armar_read(p)
 

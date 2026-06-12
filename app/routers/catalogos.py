@@ -7,7 +7,12 @@ from app.schemas.catalogo_schemas import (
     FormaPagoRead,
     UnidadMedidaRead,
 )
+from app.services.pedido_service import TRANSICIONES
 from app.uow import UnitOfWork, get_uow
+
+# estados vigentes de la FSM v7; en bases migradas puede quedar EN_CAMINO
+# en la tabla (el historial viejo lo referencia, RN-03) pero no se expone
+ESTADOS_FSM = set(TRANSICIONES.keys())
 
 router = APIRouter(tags=["catalogos"])
 
@@ -33,6 +38,7 @@ def listar_estados_pedido(uow: UnitOfWork = Depends(get_uow)):
                 es_terminal=e.es_terminal,
             )
             for e in uow.pedidos.list_estados_pedido()
+            if e.codigo in ESTADOS_FSM
         ]
 
 

@@ -33,7 +33,7 @@ async def _emitir_evento(svc: PedidoService) -> None:
     if not ev:
         return
     await manager.broadcast_to_roles([RolCodigo.ADMIN, RolCodigo.PEDIDOS], ev)
-    await manager.broadcast_to_order(ev["pedido_id"], ev)
+    await manager.broadcast_to_order(ev["data"]["pedido_id"], ev)
 
 
 @router.get("", response_model=List[PedidoRead])

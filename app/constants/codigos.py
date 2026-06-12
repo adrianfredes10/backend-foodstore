@@ -15,3 +15,10 @@ class EstadoPedidoCodigo:
     EN_PREP = "EN_PREP"
     ENTREGADO = "ENTREGADO"
     CANCELADO = "CANCELADO"
+
+
+class FormaPagoCodigo:
+    EFECTIVO = "EFECTIVO"
+    TARJETA = "TARJETA"
+    TRANSFERENCIA = "TRANSFERENCIA"
+    MERCADOPAGO = "MERCADOPAGO"

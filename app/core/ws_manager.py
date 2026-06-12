@@ -1,6 +1,6 @@
 # manager de conexiones WebSocket con rooms por rol y por pedido
 # el broadcast se llama SIEMPRE fuera del UoW y post-commit (RN-06)
-# el payload se envia plano, tal cual lo define el CONTRATO-API
+# el payload es {"event": "PEDIDO_ACTUALIZADO", "data": {...}} segun CONTRATO-API
 import logging
 from typing import Any
 
@@ -16,9 +16,11 @@ class ConnectionManager:
         # socket -> set de rooms (mapa inverso, para limpiar al desconectar)
         self.socket_rooms: dict[WebSocket, set[str]] = {}
 
-    async def connect(self, websocket: WebSocket, role: str) -> None:
+    async def connect(self, websocket: WebSocket, role: str | None = None) -> None:
+        # role=None: cliente sin room de rol; se suscribe luego con subscribe-order
         await websocket.accept()
-        self._join(websocket, f"role:{role.lower()}")
+        if role:
+            self._join(websocket, f"role:{role.lower()}")
 
     def disconnect(self, websocket: WebSocket) -> None:
         for room in self.socket_rooms.pop(websocket, set()):

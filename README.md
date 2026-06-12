@@ -44,6 +44,7 @@ SECRET_KEY=tu_clave_secreta_minimo_16_chars
 python -m venv .venv
 .venv\Scripts\activate        # Windows
 # source .venv/bin/activate   # Linux/Mac
+source .venv/Scripts/activate
 pip install -r requirements.txt
 uvicorn app.main:app
 ```
@@ -56,21 +57,17 @@ carga roles, estados, formas de pago, unidades de medida y usuario admin.
 
 ### 4. Migraciones (solo en bases existentes de parciales previos)
 
-Si la base ya existía, correr en orden los scripts de `migrations/` que falten:
+Si la base ya existía, aplicar **todas** las migraciones con un solo comando
+(las corre en orden, son idempotentes y se pueden re-ejecutar sin romper):
 
 ```bash
-# ejemplo con psql
-psql "$DATABASE_URL" -f migrations/004_fsm_5_estados.sql
-psql "$DATABASE_URL" -f migrations/005_pedido_montos_v7.sql
-psql "$DATABASE_URL" -f migrations/006_unidad_medida.sql
-psql "$DATABASE_URL" -f migrations/007_categoria_imagen.sql
-psql "$DATABASE_URL" -f migrations/008_usuariorol_expires.sql
-psql "$DATABASE_URL" -f migrations/009_refresh_token.sql
-psql "$DATABASE_URL" -f migrations/010_producto_imagen_public_id.sql
-psql "$DATABASE_URL" -f migrations/011_producto_imagenes_array.sql
+python migrate.py
 ```
 
-Todas son idempotentes (`IF NOT EXISTS`), se pueden re-ejecutar sin romper.
+> Sin esto el servidor falla al arrancar con `column estado_pedido.es_terminal does not exist`
+> (u otra columna nueva): `create_all` crea tablas que faltan pero **no** altera tablas existentes.
+
+Equivalente manual: `psql "$DATABASE_URL" -f migrations/<archivo>.sql` en orden (004 → 012).
 
 ### 5. (Opcional) Cargar datos de prueba
 
@@ -132,10 +129,11 @@ Patrones adicionales:
 
 ## WebSocket
 
-- `WS /ws/pedidos` — feed de staff (ADMIN/PEDIDOS) con cambios de estado de pedidos en tiempo real
+- `WS /api/v1/ws` — staff (ADMIN/PEDIDOS) recibe todos los cambios de estado; el cliente (CLIENT) se suscribe a sus pedidos
 - Auth por cookie `access_token` (se envía sola en el handshake)
 - Close codes: `4001` token expirado (el front refresca y reconecta), `1008` sin sesión / token inválido / rol no permitido
-- Eventos (payload plano): `estado_cambiado`, `pedido_cancelado`, `pago_confirmado`
+- Suscripción del cliente: enviar `{"action": "subscribe-order", "order_id": 42}` (solo pedidos propios)
+- Evento: `{"event": "PEDIDO_ACTUALIZADO", "data": {"pedido_id", "estado_anterior", "estado_nuevo", "usuario_id", "motivo", "timestamp"}}`
 - El broadcast se emite **post-commit, fuera del UoW** (RN-06)
 
 ## Imágenes (Cloudinary)
@@ -163,7 +161,7 @@ Todos bajo `/api/v1/`. Ver documentación completa en `/docs` o en `docs/API_RUT
 | `/api/v1/formas-pago` | Catálogo público de formas de pago |
 | `/api/v1/estados-pedido` | Catálogo público de estados (con `es_terminal`) |
 | `/api/v1/unidades-medida` | Catálogo público de unidades de medida |
-| `/ws/pedidos` | WebSocket feed de staff (tiempo real) |
+| `/api/v1/ws` | WebSocket de pedidos en tiempo real (staff + clientes) |
 
 ## Usuario admin por defecto
 

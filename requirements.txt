@@ -13,5 +13,7 @@ bcrypt>=3.2.0,<4.0.0
 python-multipart>=0.0.9
 # Global — Cloudinary (imagenes de productos)
 cloudinary>=1.40.0
+# Global — MercadoPago Checkout PRO (pagos online)
+mercadopago>=2.2.0
 # tests (bonus): unitarios de logica de negocio
 pytest>=8.0.0
