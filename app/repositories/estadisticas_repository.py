@@ -103,18 +103,18 @@ class EstadisticasRepository:
         ]
 
     def get_productos_top(self, limit: int = 10) -> List[dict]:
-        # EST-02: usa subtotal del detalle (precio_unitario * cantidad)
+        # EST-02: usa subtotal_snap (snapshot inmutable, garantiza precios historicos)
         rows = self.session.exec(
             text("""
                 SELECT
-                    dp.producto_nombre,
-                    COALESCE(SUM(dp.subtotal), 0) AS ingresos,
+                    dp.nombre_snapshot,
+                    COALESCE(SUM(dp.subtotal_snap), 0) AS ingresos,
                     SUM(dp.cantidad) AS cantidad_vendida
                 FROM detalle_pedido dp
                 JOIN pedido p ON dp.pedido_id = p.id
                 JOIN estado_pedido e ON p.estado_id = e.id
                 WHERE e.codigo != 'CANCELADO'
-                GROUP BY dp.producto_nombre
+                GROUP BY dp.nombre_snapshot
                 ORDER BY ingresos DESC
                 LIMIT :limit
             """),
