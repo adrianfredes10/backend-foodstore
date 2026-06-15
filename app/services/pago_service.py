@@ -189,7 +189,7 @@ class PagoService:
     def obtener_por_pedido(
         self, pedido_id: int, usuario_id: int, roles: set[str]
     ) -> PagoRead:
-        # lectura para detalle de pedido (cliente dueño o staff)
+        # lectura para detalle de pedido (cliente dueno o staff)
         with self.uow as uow:
             pedido = uow.pedidos.get_pedido(pedido_id)
             if not pedido:

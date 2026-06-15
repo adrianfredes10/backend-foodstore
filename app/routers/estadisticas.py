@@ -29,10 +29,10 @@ def resumen(
 
 @router.get("/ventas", response_model=List[VentasPeriodoItem])
 def ventas_periodo(
+    _admin: Annotated[Usuario, Depends(require_roles(RolCodigo.ADMIN))],
     desde: date = Query(...),
     hasta: date = Query(...),
     agrupacion: str = Query(default="day", pattern="^(day|week|month)$"),
-    _admin: Annotated[Usuario, Depends(require_roles(RolCodigo.ADMIN))] = None,
     uow: UnitOfWork = Depends(get_uow),
 ):
     return EstadisticasService(uow).get_ventas_periodo(desde, hasta, agrupacion)
@@ -40,8 +40,8 @@ def ventas_periodo(
 
 @router.get("/productos-top", response_model=List[ProductoTopItem])
 def productos_top(
+    _admin: Annotated[Usuario, Depends(require_roles(RolCodigo.ADMIN))],
     limit: int = Query(default=10, ge=1, le=50),
-    _admin: Annotated[Usuario, Depends(require_roles(RolCodigo.ADMIN))] = None,
     uow: UnitOfWork = Depends(get_uow),
 ):
     return EstadisticasService(uow).get_productos_top(limit)
@@ -57,9 +57,9 @@ def pedidos_por_estado(
 
 @router.get("/ingresos", response_model=List[IngresoFormaPagoItem])
 def ingresos_por_forma_pago(
+    _admin: Annotated[Usuario, Depends(require_roles(RolCodigo.ADMIN))],
     desde: date = Query(...),
     hasta: date = Query(...),
-    _admin: Annotated[Usuario, Depends(require_roles(RolCodigo.ADMIN))] = None,
     uow: UnitOfWork = Depends(get_uow),
 ):
     return EstadisticasService(uow).get_ingresos_por_forma_pago(desde, hasta)

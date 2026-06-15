@@ -106,6 +106,6 @@ def obtener_pago_de_pedido(
     user: Annotated[Usuario, Depends(get_current_user)],
     uow: UnitOfWork = Depends(get_uow),
 ):
-    # read-only para el detalle de pedido (cliente dueño o staff)
+    # read-only para el detalle de pedido (cliente dueno o staff)
     roles = {r.codigo for r in (user.roles or [])}
     return PagoService(uow).obtener_por_pedido(pedido_id, user.id, roles)

@@ -42,7 +42,7 @@ UNIDADES_DATA = [
     ("litro", "L", "volumen"),
     ("mililitro", "ml", "volumen"),
     ("unidad", "ud", "contable"),
-    ("porciones", "porc", "contable"),
+    ("porciones", "porciones", "contable"),
 ]
 
 
