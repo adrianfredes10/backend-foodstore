@@ -104,18 +104,38 @@ class ProductoRepository(BaseRepository[Producto]):
         producto.deleted_at = datetime.now(timezone.utc)
         self.session.add(producto)
 
+    def get_ingredientes_con_pivot(
+        self, producto_id: int
+    ) -> list[tuple["Ingrediente", "ProductoIngrediente"]]:
+        rows = self.session.exec(
+            select(Ingrediente, ProductoIngrediente)
+            .join(
+                ProductoIngrediente,
+                ProductoIngrediente.ingrediente_id == Ingrediente.id,
+            )
+            .where(
+                ProductoIngrediente.producto_id == producto_id,
+                Ingrediente.deleted_at.is_(None),
+            )
+        ).all()
+        return list(rows)
+
     def add_ingrediente(
         self,
         producto_id: int,
         ingrediente_id: int,
         cantidad: float,
         es_alergeno: bool = False,
+        es_removible: bool = False,
+        unidad_medida_id: Optional[int] = None,
     ) -> ProductoIngrediente:
         link = ProductoIngrediente(
             producto_id=producto_id,
             ingrediente_id=ingrediente_id,
             cantidad=cantidad,
             es_alergeno=es_alergeno,
+            es_removible=es_removible,
+            unidad_medida_id=unidad_medida_id,
         )
         self.session.add(link)
         self.session.flush()
@@ -131,6 +151,8 @@ class ProductoRepository(BaseRepository[Producto]):
                     ingrediente_id=ing_data.ingrediente_id,
                     cantidad=ing_data.cantidad,
                     es_alergeno=ing_data.es_alergeno,
+                    es_removible=ing_data.es_removible,
+                    unidad_medida_id=ing_data.unidad_medida_id,
                 )
             )
 
@@ -171,8 +193,11 @@ class ProductoRepository(BaseRepository[Producto]):
                 )
 
         ingredientes_raw = self.session.exec(
-            select(Ingrediente, ProductoIngrediente.cantidad, ProductoIngrediente.es_alergeno)
-            .join(ProductoIngrediente)
+            select(Ingrediente, ProductoIngrediente)
+            .join(
+                ProductoIngrediente,
+                ProductoIngrediente.ingrediente_id == Ingrediente.id,
+            )
             .where(
                 ProductoIngrediente.producto_id == producto.id,
                 Ingrediente.deleted_at.is_(None),
@@ -183,11 +208,13 @@ class ProductoRepository(BaseRepository[Producto]):
             ProductoIngredienteRead(
                 ingrediente_id=ing.id,
                 nombre=ing.nombre,
-                cantidad=cantidad,
+                cantidad=pivot.cantidad,
                 unidad_medida=ing.unidad_medida,
-                es_alergeno=es_alg,
+                es_alergeno=pivot.es_alergeno,
+                es_removible=pivot.es_removible,
+                unidad_medida_id=pivot.unidad_medida_id,
             )
-            for ing, cantidad, es_alg in ingredientes_raw
+            for ing, pivot in ingredientes_raw
         ]
 
         imagenes_url = [

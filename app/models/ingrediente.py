@@ -9,8 +9,10 @@ class ProductoIngrediente(SQLModel, table=True):
     producto_id: int = Field(foreign_key="producto.id", primary_key=True)
     ingrediente_id: int = Field(foreign_key="ingrediente.id", primary_key=True)
     cantidad: float = Field(gt=0)
-    # alergeno especifico de esta combinacion producto-ingrediente
     es_alergeno: bool = Field(default=False)
+    # v7: permite personalizacion del pedido
+    es_removible: bool = Field(default=False)
+    unidad_medida_id: Optional[int] = Field(default=None, foreign_key="unidad_medida.id")
 
 
 class Ingrediente(SQLModel, table=True):

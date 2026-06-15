@@ -10,6 +10,8 @@ from app.schemas.direccion_schemas import DireccionRead
 class ItemPedidoIn(SQLModel):
     producto_id: int = Field(gt=0)
     cantidad: float = Field(gt=0)
+    # IDs de ingredientes removidos (personalizacion)
+    personalizacion: Optional[List[int]] = None
 
 
 class PedidoCreate(SQLModel):
@@ -19,6 +21,12 @@ class PedidoCreate(SQLModel):
     observaciones: Optional[str] = Field(default=None, max_length=500)
 
 
+class AvanzarEstadoRequest(SQLModel):
+    nuevo_estado: str
+    # RN-05: motivo obligatorio si nuevo_estado = CANCELADO
+    motivo: Optional[str] = Field(default=None, max_length=500)
+
+
 class CancelarRequest(SQLModel):
     # RN-05: motivo obligatorio al cancelar
     motivo: str = Field(min_length=1, max_length=500)
@@ -26,10 +34,11 @@ class CancelarRequest(SQLModel):
 
 class DetallePedidoRead(SQLModel):
     producto_id: Optional[int]
-    producto_nombre: str
-    precio_unitario: str
+    nombre_snapshot: str
+    precio_snapshot: str
     cantidad: float
-    subtotal: str
+    subtotal_snap: str
+    personalizacion: Optional[List[int]] = None
 
 
 class UsuarioSimpleRead(SQLModel):
@@ -41,8 +50,8 @@ class HistorialEstadoRead(SQLModel):
     estado_anterior: Optional[EstadoPedidoRead] = None
     estado_nuevo: EstadoPedidoRead
     usuario: Optional[UsuarioSimpleRead] = None
-    fecha: datetime
-    observacion: Optional[str] = None
+    created_at: datetime
+    motivo: Optional[str] = None
 
 
 class PedidoRead(SQLModel):
@@ -61,8 +70,3 @@ class PedidoRead(SQLModel):
     fecha_entrega: Optional[datetime]
     items: List[DetallePedidoRead]
     historial: List[HistorialEstadoRead]
-
-
-class CambiarEstadoRequest(SQLModel):
-    estado_codigo: str
-    observacion: Optional[str] = None

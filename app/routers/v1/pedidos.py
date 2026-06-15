@@ -7,7 +7,7 @@ from app.core.auth_deps import get_current_user, require_roles
 from app.core.ws_manager import manager
 from app.models.seguridad import Usuario
 from app.schemas.pedido_schemas import (
-    CambiarEstadoRequest,
+    AvanzarEstadoRequest,
     CancelarRequest,
     HistorialEstadoRead,
     PedidoCreate,
@@ -47,7 +47,6 @@ def listar_pedidos(
 ):
     roles = _roles(user)
     es_staff = _es_staff(roles)
-    # solo staff puede filtrar por usuario_id ajeno
     filtro_uid = usuario_id if es_staff else None
     svc = PedidoService(uow)
     return svc.listar(
@@ -84,13 +83,13 @@ def obtener_pedido(
 @router.patch("/{pedido_id}/estado", response_model=PedidoRead)
 async def cambiar_estado_pedido(
     pedido_id: Annotated[int, Path(gt=0)],
-    body: CambiarEstadoRequest,
+    body: AvanzarEstadoRequest,
     user: Annotated[Usuario, Depends(get_current_user)],
     uow: UnitOfWork = Depends(get_uow),
 ):
     svc = PedidoService(uow)
     read = svc.cambiar_estado(
-        pedido_id, body.estado_codigo, user.id, _roles(user), body.observacion
+        pedido_id, body.nuevo_estado, user.id, _roles(user), body.motivo
     )
     await _emitir_evento(svc)
     return read
@@ -107,13 +106,14 @@ def obtener_historial(
     )
 
 
-@router.post("/{pedido_id}/cancelar", response_model=PedidoRead)
-async def cancelar_pedido(
+@router.delete("/{pedido_id}", response_model=PedidoRead)
+async def cancelar_pedido_cliente(
     pedido_id: Annotated[int, Path(gt=0)],
     body: CancelarRequest,
     user: Annotated[Usuario, Depends(get_current_user)],
     uow: UnitOfWork = Depends(get_uow),
 ):
+    # CLIENT cancela su propio pedido (solo PENDIENTE o CONFIRMADO)
     svc = PedidoService(uow)
     read = svc.cancelar(pedido_id, user.id, body.motivo)
     await _emitir_evento(svc)

@@ -9,6 +9,16 @@ class ProductoIngredienteInput(SQLModel):
     ingrediente_id: int
     cantidad: float = Field(gt=0)
     es_alergeno: bool = False
+    es_removible: bool = False
+    unidad_medida_id: Optional[int] = None
+
+
+class AsociarIngredienteBody(SQLModel):
+    ingrediente_id: int = Field(gt=0)
+    cantidad: float = Field(gt=0)
+    es_removible: bool = False
+    es_alergeno: bool = False
+    unidad_medida_id: Optional[int] = None
 
 
 class ProductoIngredienteRead(SQLModel):
@@ -17,6 +27,8 @@ class ProductoIngredienteRead(SQLModel):
     cantidad: float
     unidad_medida: str
     es_alergeno: bool = False
+    es_removible: bool = False
+    unidad_medida_id: Optional[int] = None
 
 
 class ProductoBase(SQLModel):

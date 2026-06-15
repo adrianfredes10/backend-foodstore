@@ -7,8 +7,10 @@ from app.core.auth_deps import require_roles
 from app.models.seguridad import Usuario
 from app.schemas.common import PaginatedResponse
 from app.schemas.producto import (
+    AsociarIngredienteBody,
     ProductoCreate,
     ProductoDisponibilidadBody,
+    ProductoIngredienteRead,
     ProductoRead,
     ProductoStockBody,
     ProductoUpdate,
@@ -119,3 +121,25 @@ def get_imagenes_producto(
     uow: UnitOfWork = Depends(get_uow),
 ):
     return UploadService(uow).listar_imagenes_producto(id)
+
+
+@router.get("/{id}/ingredientes", response_model=list[ProductoIngredienteRead])
+def get_ingredientes_producto(
+    id: Annotated[int, Path(gt=0)],
+    uow: UnitOfWork = Depends(get_uow),
+):
+    return ProductoService(uow).get_ingredientes(id)
+
+
+@router.post(
+    "/{id}/ingredientes",
+    response_model=ProductoIngredienteRead,
+    status_code=status.HTTP_201_CREATED,
+)
+def asociar_ingrediente(
+    id: Annotated[int, Path(gt=0)],
+    body: AsociarIngredienteBody,
+    _admin: Annotated[Usuario, Depends(require_roles(RolCodigo.ADMIN))],
+    uow: UnitOfWork = Depends(get_uow),
+):
+    return ProductoService(uow).asociar_ingrediente(id, body)

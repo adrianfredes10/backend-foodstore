@@ -22,6 +22,8 @@ class Producto(SQLModel, table=True):
     imagenes_data: Optional[list] = Field(
         default=None, sa_column=Column(JSON, nullable=True)
     )
+    # unidad de venta del producto (v7)
+    unidad_venta_id: Optional[int] = Field(default=None, foreign_key="unidad_medida.id")
     # 1:N con categoria
     categoria_id: int = Field(foreign_key="categoria.id")
     created_at: datetime = Field(default_factory=datetime.utcnow)

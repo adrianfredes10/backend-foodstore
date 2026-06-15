@@ -10,7 +10,7 @@ from app.models.pedido import DetallePedido, HistorialEstadoPedido, Pedido
 from app.schemas.catalogo_schemas import EstadoPedidoRead, FormaPagoRead
 from app.schemas.direccion_schemas import DireccionRead
 from app.schemas.pedido_schemas import (
-    CambiarEstadoRequest,
+    AvanzarEstadoRequest,
     DetallePedidoRead,
     HistorialEstadoRead,
     ItemPedidoIn,
@@ -114,16 +114,17 @@ class PedidoService:
         items_rd = [
             DetallePedidoRead(
                 producto_id=d.producto_id,
-                producto_nombre=d.producto_nombre,
-                precio_unitario=str(d.precio_unitario),
+                nombre_snapshot=d.nombre_snapshot,
+                precio_snapshot=str(d.precio_snapshot),
                 cantidad=d.cantidad,
-                subtotal=str(d.subtotal),
+                subtotal_snap=str(d.subtotal_snap),
+                personalizacion=d.personalizacion,
             )
             for d in (p.detalles or [])
         ]
 
         hist_rd: List[HistorialEstadoRead] = []
-        for h in sorted(p.historial or [], key=lambda x: x.fecha):
+        for h in sorted(p.historial or [], key=lambda x: x.created_at):
             est_ant = None
             if h.estado_anterior_id:
                 e = self.uow.pedidos.get_estado_by_id(h.estado_anterior_id)
@@ -140,8 +141,8 @@ class PedidoService:
                     estado_anterior=est_ant,
                     estado_nuevo=_build_estado_read(e_new),
                     usuario=usr_simple,
-                    fecha=h.fecha,
-                    observacion=h.observacion,
+                    created_at=h.created_at,
+                    motivo=h.motivo,
                 )
             )
 
@@ -227,10 +228,11 @@ class PedidoService:
                 det = DetallePedido(
                     pedido_id=ped.id,
                     producto_id=prod.id,
-                    producto_nombre=prod.nombre,
-                    precio_unitario=prod.precio,
+                    nombre_snapshot=prod.nombre,
+                    precio_snapshot=prod.precio,
                     cantidad=item.cantidad,
-                    subtotal=sub_item,
+                    subtotal_snap=sub_item,
+                    personalizacion=item.personalizacion,
                 )
                 uow.pedidos.add_detalle(det)
                 prod.stock_cantidad -= item.cantidad
@@ -300,7 +302,7 @@ class PedidoService:
         nuevo_codigo: str,
         actor_id: int,
         roles: set[str],
-        observacion: Optional[str] = None,
+        motivo: Optional[str] = None,
     ) -> PedidoRead:
         with self.uow as uow:
             p = uow.pedidos.get_pedido(pedido_id)
@@ -329,7 +331,7 @@ class PedidoService:
                 )
 
             # RN-05: motivo obligatorio al cancelar (cualquier actor)
-            if nuevo_codigo == EstadoPedidoCodigo.CANCELADO and not observacion:
+            if nuevo_codigo == EstadoPedidoCodigo.CANCELADO and not motivo:
                 raise HTTPException(
                     status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                     detail="El motivo de cancelacion es obligatorio",
@@ -375,7 +377,7 @@ class PedidoService:
                     estado_anterior_id=prev_id,
                     estado_nuevo_id=est_nuevo.id,
                     usuario_id=actor_id,
-                    observacion=observacion,
+                    motivo=motivo,
                 )
             )
             uow.flush()
@@ -385,7 +387,7 @@ class PedidoService:
                 estado_anterior=cod_actual,
                 estado_nuevo=nuevo_codigo,
                 usuario_id=actor_id,
-                motivo=observacion if es_cancelado else None,
+                motivo=motivo if es_cancelado else None,
             )
             return self._armar_read(p)
 
@@ -438,7 +440,7 @@ class PedidoService:
                         status.HTTP_403_FORBIDDEN, "No podés ver este pedido"
                     )
             hist_rd: List[HistorialEstadoRead] = []
-            for h in sorted(p.historial or [], key=lambda x: x.fecha):
+            for h in sorted(p.historial or [], key=lambda x: x.created_at):
                 est_ant = None
                 if h.estado_anterior_id:
                     e = uow.pedidos.get_estado_by_id(h.estado_anterior_id)
@@ -455,8 +457,8 @@ class PedidoService:
                         estado_anterior=est_ant,
                         estado_nuevo=_build_estado_read(e_new),
                         usuario=usr_simple,
-                        fecha=h.fecha,
-                        observacion=h.observacion,
+                        created_at=h.created_at,
+                        motivo=h.motivo,
                     )
                 )
             return hist_rd
