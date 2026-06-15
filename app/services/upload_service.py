@@ -186,6 +186,35 @@ class UploadService:
             imagenes=imagenes,
         )
 
+    async def subir_imagen_generica(self, file: UploadFile) -> UploadImagenResponse:
+        # endpoint spec v6: sube sin asociar a ningun producto
+        if not esta_configurado():
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "Cloudinary no configurado")
+        contenido = await self._leer_y_validar(file)
+        result = await asyncio.to_thread(
+            cloudinary.uploader.upload,
+            contenido,
+            folder=FOLDER,
+            resource_type="image",
+        )
+        return UploadImagenResponse(
+            imagen_url=result["secure_url"],
+            public_id=result["public_id"],
+            imagenes_url=[result["secure_url"]],
+            width=result.get("width"),
+            height=result.get("height"),
+            format=result.get("format"),
+            resource_type=result.get("resource_type"),
+        )
+
+    async def borrar_imagen_generica(self, public_id: str) -> None:
+        # endpoint spec v6: borra de Cloudinary sin tocar BD
+        if not esta_configurado():
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "Cloudinary no configurado")
+        await asyncio.to_thread(
+            cloudinary.uploader.destroy, public_id, resource_type="image"
+        )
+
     @staticmethod
     async def _leer_y_validar(file: UploadFile) -> bytes:
         if file.content_type not in TIPOS_PERMITIDOS:

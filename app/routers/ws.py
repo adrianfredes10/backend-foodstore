@@ -33,9 +33,11 @@ def _puede_suscribirse(pedido_id: int, usuario_id: int, es_staff: bool) -> bool:
         return es_staff or pedido.usuario_id == usuario_id
 
 
-@router.websocket("/api/v1/ws")
-async def ws_pedidos(websocket: WebSocket):
-    token = websocket.cookies.get("access_token")
+@router.websocket("/ws/pedidos")
+async def ws_pedidos(websocket: WebSocket, token: str = None):
+    # acepta auth por cookie HttpOnly O por query param ?token= (spec v6 sec 9.1)
+    if not token:
+        token = websocket.cookies.get("access_token")
     if not token:
         await websocket.accept()
         await websocket.close(code=WS_NO_AUTORIZADO, reason="No autenticado")

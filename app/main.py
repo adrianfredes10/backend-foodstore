@@ -14,6 +14,7 @@ from app.routers import (
     pedidos_v1_router,
     productos_router,
 )
+from app.routers.estadisticas import router as estadisticas_router
 from app.routers.uploads import router as uploads_router
 from app.routers.v1.auth import router as auth_v1_router
 from app.routers.v1.pagos import router as pagos_v1_router
@@ -51,6 +52,7 @@ app.include_router(pedidos_v1_router, prefix="/api/v1/pedidos")
 app.include_router(admin_usuarios_v1_router, prefix="/api/v1/admin")
 app.include_router(pagos_v1_router, prefix="/api/v1/pagos")
 app.include_router(uploads_router, prefix="/api/v1/uploads")
+app.include_router(estadisticas_router, prefix="/api/v1/estadisticas")
 app.include_router(catalogos_router, prefix="/api/v1")
 app.include_router(ws_router)
 
