@@ -30,8 +30,9 @@ async def _emitir_evento(svc: PagoService) -> None:
     ev = svc.evento_ws
     if not ev:
         return
+    # el evento que arma PedidoService es PLANO (pedido_id al tope), no anidado
     await manager.broadcast_to_roles([RolCodigo.ADMIN, RolCodigo.PEDIDOS], ev)
-    await manager.broadcast_to_order(ev["data"]["pedido_id"], ev)
+    await manager.broadcast_to_order(ev["pedido_id"], ev)
 
 
 @router.post(

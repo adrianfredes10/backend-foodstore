@@ -124,6 +124,7 @@ class PagoService:
                     mp_status="pending",
                     transaction_amount=total,
                     currency_id=CURRENCY,
+                    external_reference=str(pedido_id),
                 )
             )
             pago_id = pago.id
@@ -213,6 +214,7 @@ class PagoService:
                 mp_preference_id=pago.mp_preference_id,
                 mp_status=pago.mp_status,
                 mp_status_detail=pago.mp_status_detail,
+                payment_method_id=pago.payment_method_id,
                 transaction_amount=str(pago.transaction_amount),
                 currency_id=pago.currency_id,
                 created_at=pago.created_at,
@@ -254,12 +256,15 @@ class PagoService:
                         idempotency_key=str(uuid.uuid4()),
                         transaction_amount=pedido.total,
                         currency_id=CURRENCY,
+                        external_reference=str(pedido_id),
                     )
                 )
 
             pago.mp_payment_id = str(data["id"])
             pago.mp_status = mp_status or pago.mp_status
             pago.mp_status_detail = data.get("status_detail")
+            pago.payment_method_id = data.get("payment_method_id") or pago.payment_method_id
+            pago.external_reference = pago.external_reference or str(pedido_id)
             if data.get("transaction_amount") is not None:
                 pago.transaction_amount = data["transaction_amount"]
             pago.updated_at = datetime.now(timezone.utc)

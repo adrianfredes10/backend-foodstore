@@ -38,6 +38,7 @@ class PagoRead(SQLModel):
     mp_preference_id: Optional[str] = None
     mp_status: str
     mp_status_detail: Optional[str] = None
+    payment_method_id: Optional[str] = None
     transaction_amount: str
     currency_id: str
     created_at: datetime

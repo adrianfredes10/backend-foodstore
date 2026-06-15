@@ -18,6 +18,10 @@ class Pago(SQLModel, table=True):
     # estados de MP: pending | approved | rejected | cancelled | ...
     mp_status: str = Field(default="pending", max_length=50)
     mp_status_detail: Optional[str] = Field(default=None, max_length=100)
+    # metodo de pago usado en MP (visa, master, account_money...) — spec v7 §3.3
+    payment_method_id: Optional[str] = Field(default=None, max_length=50)
+    # referencia externa que viaja a MP (str del pedido_id) — spec v7 §3.3
+    external_reference: Optional[str] = Field(default=None, index=True, max_length=100)
     transaction_amount: Decimal = Field(
         default=0, max_digits=12, decimal_places=2, ge=0
     )
