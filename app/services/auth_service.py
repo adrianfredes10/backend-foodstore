@@ -10,7 +10,7 @@ from app.core.security import (
     verify_password,
 )
 from app.models.seguridad import Usuario
-from app.schemas.auth_schemas import RolPublic, UsuarioPublic
+from app.schemas.auth_schemas import PerfilUpdate, RolPublic, UsuarioPublic
 from app.uow import UnitOfWork
 
 
@@ -71,6 +71,22 @@ class AuthService:
                     detail="Error al crear usuario",
                 )
             return _to_public(reloaded)
+
+    def actualizar_perfil(self, usuario_id: int, data: PerfilUpdate) -> UsuarioPublic:
+        with self.uow as uow:
+            user = uow.usuarios.get_by_id(usuario_id)
+            if not user:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Usuario no encontrado",
+                )
+            patch = data.model_dump(exclude_unset=True)
+            if patch:
+                uow.usuarios.update_fields(user, **patch)
+                uow.flush()
+                uow.refresh(user)
+                _ = [r.codigo for r in user.roles]
+            return _to_public(user)
 
     def login(self, email: str, password: str) -> tuple[UsuarioPublic, str, str]:
         with self.uow as uow:

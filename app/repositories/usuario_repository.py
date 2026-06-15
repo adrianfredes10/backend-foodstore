@@ -40,6 +40,12 @@ class UsuarioRepository(BaseRepository[Usuario]):
         self.session.flush()
         return usuario
 
+    def update_fields(self, usuario: Usuario, **kwargs) -> Usuario:
+        for k, v in kwargs.items():
+            setattr(usuario, k, v)
+        self.session.add(usuario)
+        return usuario
+
     def add_rol(self, usuario_id: int, rol_id: int) -> None:
         existe = self.session.exec(
             select(UsuarioRol).where(

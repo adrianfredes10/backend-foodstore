@@ -11,7 +11,12 @@ from app.core.auth_deps import (
     get_current_user,
 )
 from app.models.seguridad import Usuario
-from app.schemas.auth_schemas import LoginRequest, RegistroRequest, UsuarioPublic
+from app.schemas.auth_schemas import (
+    LoginRequest,
+    PerfilUpdate,
+    RegistroRequest,
+    UsuarioPublic,
+)
 from app.services.auth_service import AuthService, _to_public
 from app.uow import UnitOfWork, get_uow
 
@@ -111,3 +116,13 @@ def logout(
 def obtener_perfil_actual(user: Annotated[Usuario, Depends(get_current_user)]):
     # user viene de get_current_user con roles cargados en la sesion activa
     return _to_public(user)
+
+
+@router.patch("/me", response_model=UsuarioPublic)
+def actualizar_perfil_actual(
+    body: PerfilUpdate,
+    user: Annotated[Usuario, Depends(get_current_user)],
+    uow: UnitOfWork = Depends(get_uow),
+):
+    # el usuario edita sus propios datos personales (nombre/apellido/telefono)
+    return AuthService(uow).actualizar_perfil(user.id, body)

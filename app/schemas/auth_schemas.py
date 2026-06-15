@@ -31,3 +31,10 @@ class RegistroRequest(SQLModel):
 class LoginRequest(SQLModel):
     email: str
     password: str
+
+
+class PerfilUpdate(SQLModel):
+    # edicion del propio perfil (cliente): solo datos personales, no email/password/roles
+    nombre: Optional[str] = Field(default=None, min_length=2, max_length=120)
+    apellido: Optional[str] = Field(default=None, min_length=2, max_length=120)
+    telefono: Optional[str] = Field(default=None, max_length=30)
