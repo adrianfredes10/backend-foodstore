@@ -114,17 +114,17 @@ class PedidoService:
         items_rd = [
             DetallePedidoRead(
                 producto_id=d.producto_id,
-                nombre_snapshot=d.nombre_snapshot,
-                precio_snapshot=str(d.precio_snapshot),
+                producto_nombre=d.producto_nombre,
+                precio_unitario=str(d.precio_unitario),
                 cantidad=d.cantidad,
-                subtotal_snap=str(d.subtotal_snap),
+                subtotal=str(d.subtotal),
                 personalizacion=d.personalizacion,
             )
             for d in (p.detalles or [])
         ]
 
         hist_rd: List[HistorialEstadoRead] = []
-        for h in sorted(p.historial or [], key=lambda x: x.created_at):
+        for h in sorted(p.historial or [], key=lambda x: x.fecha):
             est_ant = None
             if h.estado_anterior_id:
                 e = self.uow.pedidos.get_estado_by_id(h.estado_anterior_id)
@@ -141,8 +141,8 @@ class PedidoService:
                     estado_anterior=est_ant,
                     estado_nuevo=_build_estado_read(e_new),
                     usuario=usr_simple,
-                    created_at=h.created_at,
-                    motivo=h.motivo,
+                    fecha=h.fecha,
+                    observacion=h.observacion,
                 )
             )
 
@@ -228,10 +228,10 @@ class PedidoService:
                 det = DetallePedido(
                     pedido_id=ped.id,
                     producto_id=prod.id,
-                    nombre_snapshot=prod.nombre,
-                    precio_snapshot=prod.precio,
+                    producto_nombre=prod.nombre,
+                    precio_unitario=prod.precio,
                     cantidad=item.cantidad,
-                    subtotal_snap=sub_item,
+                    subtotal=sub_item,
                     personalizacion=item.personalizacion,
                 )
                 uow.pedidos.add_detalle(det)
@@ -244,6 +244,7 @@ class PedidoService:
                     estado_anterior_id=None,
                     estado_nuevo_id=est_pend.id,
                     usuario_id=usuario_id,
+                    observacion=None,
                 )
             )
             uow.flush()
@@ -377,7 +378,7 @@ class PedidoService:
                     estado_anterior_id=prev_id,
                     estado_nuevo_id=est_nuevo.id,
                     usuario_id=actor_id,
-                    motivo=motivo,
+                    observacion=motivo,
                 )
             )
             uow.flush()
@@ -440,7 +441,7 @@ class PedidoService:
                         status.HTTP_403_FORBIDDEN, "No podés ver este pedido"
                     )
             hist_rd: List[HistorialEstadoRead] = []
-            for h in sorted(p.historial or [], key=lambda x: x.created_at):
+            for h in sorted(p.historial or [], key=lambda x: x.fecha):
                 est_ant = None
                 if h.estado_anterior_id:
                     e = uow.pedidos.get_estado_by_id(h.estado_anterior_id)
@@ -457,8 +458,8 @@ class PedidoService:
                         estado_anterior=est_ant,
                         estado_nuevo=_build_estado_read(e_new),
                         usuario=usr_simple,
-                        created_at=h.created_at,
-                        motivo=h.motivo,
+                        fecha=h.fecha,
+                        observacion=h.observacion,
                     )
                 )
             return hist_rd

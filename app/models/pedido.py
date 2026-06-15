@@ -57,10 +57,10 @@ class DetallePedido(SQLModel, table=True):
     pedido_id: int = Field(foreign_key="pedido.id", index=True)
     producto_id: Optional[int] = Field(default=None, foreign_key="producto.id")
     # snapshot: inmutable al crear el pedido (RN-04)
-    nombre_snapshot: str = Field(max_length=200)
-    precio_snapshot: Decimal = Field(max_digits=12, decimal_places=2, ge=0)
+    producto_nombre: str = Field(max_length=200)
+    precio_unitario: Decimal = Field(max_digits=12, decimal_places=2, ge=0)
     cantidad: float = Field(gt=0)
-    subtotal_snap: Decimal = Field(max_digits=12, decimal_places=2, ge=0)
+    subtotal: Decimal = Field(max_digits=12, decimal_places=2, ge=0)
     # IDs de ingredientes removidos por el cliente
     personalizacion: Optional[List[int]] = Field(default=None, sa_column=Column(JSON, nullable=True))
 
@@ -79,7 +79,7 @@ class HistorialEstadoPedido(SQLModel, table=True):
     )
     estado_nuevo_id: int = Field(foreign_key="estado_pedido.id")
     usuario_id: Optional[int] = Field(default=None, foreign_key="usuario.id")
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    motivo: Optional[str] = Field(default=None, max_length=500)
+    fecha: datetime = Field(default_factory=datetime.utcnow)
+    observacion: Optional[str] = Field(default=None, max_length=500)
 
     pedido: Optional[Pedido] = Relationship(back_populates="historial")

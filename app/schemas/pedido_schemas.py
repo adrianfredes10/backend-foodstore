@@ -34,10 +34,10 @@ class CancelarRequest(SQLModel):
 
 class DetallePedidoRead(SQLModel):
     producto_id: Optional[int]
-    nombre_snapshot: str
-    precio_snapshot: str
+    producto_nombre: str
+    precio_unitario: str
     cantidad: float
-    subtotal_snap: str
+    subtotal: str
     personalizacion: Optional[List[int]] = None
 
 
@@ -50,8 +50,8 @@ class HistorialEstadoRead(SQLModel):
     estado_anterior: Optional[EstadoPedidoRead] = None
     estado_nuevo: EstadoPedidoRead
     usuario: Optional[UsuarioSimpleRead] = None
-    created_at: datetime
-    motivo: Optional[str] = None
+    fecha: datetime
+    observacion: Optional[str] = None
 
 
 class PedidoRead(SQLModel):
