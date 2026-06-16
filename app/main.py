@@ -1,9 +1,12 @@
+import logging
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import get_settings
 from app.core.exceptions import register_exception_handlers
 from app.core.rate_limit import RateLimitMiddleware
+from app.core.timing_middleware import TimingMiddleware
 from app.database import create_db_and_tables
 from app.routers import (
     admin_usuarios_v1_router,
@@ -29,8 +32,16 @@ app = FastAPI(
 
 settings = get_settings()
 
-# orden: rate limit primero, CORS ultimo (envuelve todas las responses,
-# incluido el 429 del rate limit)
+# logs de app.* visibles en consola (timing, errores, ws, pagos)
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(levelname)s [%(name)s] %(message)s",
+)
+# silencia el spam de sqlalchemy para ver los logs de timing
+logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)
+
+# orden middlewares (ultimo agregado = primero en ejecutar):
+# timing mide el round-trip completo; rate limit solo en auth
 app.add_middleware(RateLimitMiddleware)
 app.add_middleware(
     CORSMiddleware,
@@ -39,6 +50,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.add_middleware(TimingMiddleware)
 
 # handlers de error en formato RFC 7807
 register_exception_handlers(app)

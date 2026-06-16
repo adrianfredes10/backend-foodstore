@@ -14,8 +14,9 @@ DATABASE_URL = os.getenv(
     "postgresql://postgres:1234postgres@localhost:5434/parcial_prog4",
 )
 
-# motor con echo=True para ver sql en consola (desarrollo)
-engine = create_engine(DATABASE_URL, echo=True)
+# motor; echo solo si SQL_ECHO=true en .env (para debug)
+SQL_ECHO = os.getenv("SQL_ECHO", "false").lower() in ("1", "true", "yes")
+engine = create_engine(DATABASE_URL, echo=SQL_ECHO)
 
 
 def create_db_and_tables():
