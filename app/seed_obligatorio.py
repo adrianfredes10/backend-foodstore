@@ -94,8 +94,12 @@ def seed_formas_pago(session: Session) -> None:
 
 def seed_unidades_medida(session: Session) -> None:
     for nombre, simbolo, tipo in UNIDADES_DATA:
+        # nombre y simbolo son AMBOS unique: hay que saltear si ya existe
+        # cualquiera de los dos (si no, choca el unique de nombre)
         existing = session.exec(
-            select(UnidadMedida).where(UnidadMedida.simbolo == simbolo)
+            select(UnidadMedida).where(
+                (UnidadMedida.simbolo == simbolo) | (UnidadMedida.nombre == nombre)
+            )
         ).first()
         if existing:
             print(f"  [skip] unidad '{simbolo}' ya existe")
