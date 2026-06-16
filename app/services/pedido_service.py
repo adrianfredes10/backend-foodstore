@@ -5,7 +5,7 @@ from typing import List, Optional
 
 from fastapi import HTTPException, status
 
-from app.constants.codigos import EstadoPedidoCodigo, RolCodigo
+from app.constants.codigos import EstadoPedidoCodigo, FormaPagoCodigo, RolCodigo
 from app.models.pedido import DetallePedido, HistorialEstadoPedido, Pedido
 from app.schemas.catalogo_schemas import EstadoPedidoRead, FormaPagoRead
 from app.schemas.direccion_schemas import DireccionRead
@@ -348,6 +348,27 @@ class PedidoService:
                     raise HTTPException(
                         status.HTTP_403_FORBIDDEN, "Solo podés cancelar tu propio pedido"
                     )
+
+            # RN-PAGO: un pedido con MercadoPago NO se confirma a mano. Solo el
+            # pago aprobado (via webhook) lo pasa PENDIENTE -> CONFIRMADO. Los
+            # pagos offline (EFECTIVO/TRANSFERENCIA) sí los confirma el staff.
+            # (consigna §3.4: CONFIRMADO = "pago procesado y confirmado";
+            #  §4.2: el staff avanza desde CONFIRMADO, no desde PENDIENTE)
+            if (
+                cod_actual == EstadoPedidoCodigo.PENDIENTE
+                and nuevo_codigo == EstadoPedidoCodigo.CONFIRMADO
+            ):
+                forma = uow.pedidos.get_forma_pago(p.forma_pago_id)
+                if forma and forma.codigo == FormaPagoCodigo.MERCADOPAGO:
+                    pago = uow.pagos.get_ultimo_por_pedido(p.id)
+                    if not pago or pago.mp_status != "approved":
+                        raise HTTPException(
+                            status_code=status.HTTP_409_CONFLICT,
+                            detail=(
+                                "Pedido con MercadoPago: se confirma automáticamente "
+                                "cuando MercadoPago aprueba el pago, no manualmente."
+                            ),
+                        )
 
             est_nuevo = uow.pedidos.get_estado_by_codigo(nuevo_codigo)
             if not est_nuevo:
