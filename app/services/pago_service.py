@@ -100,6 +100,11 @@ class PagoService:
             },
             "notification_url": f"{base}/api/v1/pagos/webhook",
         }
+        # auto_return: que MP redirija solo al usuario apenas aprueba el pago
+        # (patrón del profe). MP RECHAZA auto_return si las back_urls son
+        # localhost/http -> solo lo activamos con base pública (ngrok https).
+        if base.startswith("https://"):
+            preference_data["auto_return"] = "approved"
 
         # SDK fuera del UoW
         sdk = get_sdk()
@@ -287,7 +292,8 @@ class PagoService:
                     EstadoPedidoCodigo.CONFIRMADO,
                     actor_id,
                     {RolCodigo.ADMIN},
-                    observacion="Pago aprobado en MercadoPago",
+                    motivo="Pago aprobado en MercadoPago",
+                    confirmacion_pago=True,
                 )
                 self.evento_ws = svc.evento_ws
             except HTTPException as e:

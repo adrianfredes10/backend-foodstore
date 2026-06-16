@@ -304,6 +304,7 @@ class PedidoService:
         actor_id: int,
         roles: set[str],
         motivo: Optional[str] = None,
+        confirmacion_pago: bool = False,
     ) -> PedidoRead:
         with self.uow as uow:
             p = uow.pedidos.get_pedido(pedido_id)
@@ -355,7 +356,8 @@ class PedidoService:
             # (consigna §3.4: CONFIRMADO = "pago procesado y confirmado";
             #  §4.2: el staff avanza desde CONFIRMADO, no desde PENDIENTE)
             if (
-                cod_actual == EstadoPedidoCodigo.PENDIENTE
+                not confirmacion_pago
+                and cod_actual == EstadoPedidoCodigo.PENDIENTE
                 and nuevo_codigo == EstadoPedidoCodigo.CONFIRMADO
             ):
                 forma = uow.pedidos.get_forma_pago(p.forma_pago_id)
