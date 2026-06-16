@@ -57,8 +57,8 @@ def test_estado_terminal_rechaza_transicion(client: TestClient):
     cookies = _register_and_login(client, "terminal_test@foodstore.com")
     # intenta cambiar estado de un pedido inexistente (prueba la validacion)
     resp = client.patch("/api/v1/pedidos/9999/estado", json={
-        "estado_codigo": "CONFIRMADO",
-        "observacion": None,
+        "nuevo_estado": "CONFIRMADO",
+        "motivo": None,
     }, cookies=cookies)
     assert resp.status_code in (403, 404)
 

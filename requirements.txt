@@ -15,5 +15,7 @@ python-multipart>=0.0.9
 cloudinary>=1.40.0
 # Global — MercadoPago Checkout PRO (pagos online)
 mercadopago>=2.2.0
-# tests (bonus): unitarios de logica de negocio
+# tests (bonus): integracion con TestClient + cobertura
 pytest>=8.0.0
+httpx>=0.27.0          # requerido por el TestClient de FastAPI/Starlette
+pytest-cov>=5.0.0      # reporte de cobertura (rubrica: >60% en pedidos/pagos/auth)

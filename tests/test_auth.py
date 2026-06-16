@@ -29,15 +29,16 @@ def test_register_ok(client: TestClient):
 
 
 def test_register_email_duplicado(client: TestClient):
+    # nombre/apellido validos (min 2 chars); email duplicado -> 409 Conflict
     client.post("/api/v1/auth/register", json={
-        "nombre": "A", "apellido": "B",
+        "nombre": "Ana", "apellido": "Bravo",
         "email": "dup@foodstore.com", "password": PASSWORD, "telefono": None,
     })
     resp = client.post("/api/v1/auth/register", json={
-        "nombre": "A", "apellido": "B",
+        "nombre": "Ana", "apellido": "Bravo",
         "email": "dup@foodstore.com", "password": PASSWORD, "telefono": None,
     })
-    assert resp.status_code == 400
+    assert resp.status_code == 409
 
 
 def test_login_ok(client: TestClient):
@@ -88,8 +89,11 @@ def test_logout_revoca_sesion(client: TestClient):
         "email": "logout_test@foodstore.com", "password": PASSWORD,
     })
     cookies = login.cookies
-    client.post("/api/v1/auth/logout", cookies=cookies)
-    resp = client.get("/api/v1/auth/me", cookies=cookies)
+    logout = client.post("/api/v1/auth/logout", cookies=cookies)
+    assert logout.status_code in (200, 204)
+    # el access_token es un JWT stateless (vale hasta expirar); lo que el logout
+    # garantiza es revocar el REFRESH -> no se puede renovar la sesion.
+    resp = client.post("/api/v1/auth/refresh", cookies=cookies)
     assert resp.status_code == 401
 
 

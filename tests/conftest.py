@@ -1,11 +1,20 @@
 """
-fixtures para tests de integracion con TestClient
-requiere PostgreSQL disponible (DATABASE_URL en .env)
-los tests de integracion se marcan con @pytest.mark.integration
-para correrlos: py -m pytest tests/ -m integration
-para solo unit tests: py -m pytest tests/ -m "not integration"
+fixtures para tests de integracion con TestClient.
+
+Requiere PostgreSQL: correr con DATABASE_URL=postgresql://...  (idealmente una
+base de TEST dedicada). Sin Postgres, los tests de integracion se saltan solos.
+
+    DATABASE_URL="postgresql://postgres:1234postgres@localhost:5434/parcial_prog4_test" \\
+        py -m pytest -q --cov=app --cov-report=term
 """
 import os
+
+# Rate limit OFF en tests: el bucket es por-IP y todos los tests salen de la
+# misma IP del TestClient -> tras 5 logins da 429 y rompe auth en cascada.
+# Debe setearse ANTES de importar la app (get_settings se cachea al crear el
+# middleware de rate limit).
+os.environ.setdefault("RATE_LIMIT_AUTH_MAX", "100000")
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -20,6 +29,25 @@ skip_sin_db = pytest.mark.skipif(
     not _pg_disponible(),
     reason="requiere DATABASE_URL=postgresql://...",
 )
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _reset_db():
+    # Base limpia por sesion: dropea + recrea + re-seedea, para que la suite sea
+    # reproducible (sin esto, datos de corridas previas rompen tests idempotentes
+    # como register de un email ya existente).
+    if not _pg_disponible():
+        yield
+        return
+    import app.models  # noqa: F401  registra los modelos en SQLModel.metadata
+    from sqlmodel import SQLModel
+    from app.database import engine
+    from app.seed_obligatorio import run_seed_obligatorio
+
+    SQLModel.metadata.drop_all(engine)
+    SQLModel.metadata.create_all(engine)
+    run_seed_obligatorio()
+    yield
 
 
 @pytest.fixture(name="client")
