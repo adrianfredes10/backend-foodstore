@@ -7,7 +7,9 @@ ALTER TABLE usuario ADD COLUMN IF NOT EXISTS celular VARCHAR(20);
 ALTER TABLE producto ADD COLUMN IF NOT EXISTS unidad_venta_id BIGINT REFERENCES unidad_medida(id);
 
 -- personalizacion en detalle_pedido (IDs de ingredientes removidos)
-ALTER TABLE detalle_pedido ADD COLUMN IF NOT EXISTS personalizacion INTEGER[];
+-- JSON (no INTEGER[]) para coincidir con el modelo (Column(JSON)) y ser
+-- testeable en SQLite (los tests usan SQLite in-memory, spec §13)
+ALTER TABLE detalle_pedido ADD COLUMN IF NOT EXISTS personalizacion JSON;
 
 -- campos nuevos en producto_ingrediente (v7)
 ALTER TABLE producto_ingrediente ADD COLUMN IF NOT EXISTS es_removible BOOLEAN NOT NULL DEFAULT false;
