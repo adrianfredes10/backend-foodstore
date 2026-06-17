@@ -1,5 +1,7 @@
 # Backend — Food Store API
 
+Link video : https://youtu.be/LHqjPND06Gs
+
 API REST para el sistema de pedidos FoodStore. Construida con FastAPI, SQLModel y PostgreSQL.
 
 ## Stack
